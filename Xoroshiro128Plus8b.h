@@ -5,8 +5,7 @@
 #ifndef ROAMINGID__XOROSHIRO128PLUS8B_H_
 #define ROAMINGID__XOROSHIRO128PLUS8B_H_
 
-using uint = uint32_t;
-using ulong = unsigned long;
+#include "definitions.h"
 
 struct Xoroshiro128Plus8b {
  public:
