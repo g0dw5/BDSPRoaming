@@ -312,8 +312,9 @@ void loopFindPK() {
   // 先定死的
   cresselia.SID = 2331;
   cresselia.TID = 210519;
-  uint fake_tid = 29463;
-  uint fake_sid = 35571;
+  // 通过PKHex的窗口tips读到的真的ID
+  cresselia.SID = 35571;
+  cresselia.TID = 29463;
 
   cresselia.IV_HP = 31;
   cresselia.IV_ATK = 0;
@@ -322,11 +323,9 @@ void loopFindPK() {
   cresselia.IV_SPD = 31;
   cresselia.IV_SPE = 0;
 
-  static const uint tidsid = ShinyUtil::GetTidSid(fake_tid, fake_sid);
+  static const uint tidsid = ShinyUtil::GetTidSid(cresselia.TID, cresselia.SID);
 
   for (long e = 0; e < (1L << 31); ++e) {
-    //    if (e != 0x321ae2b4 && e != 0x3d77798f && e != 0x5e7082da && e != 0x62e47e43)
-    //      continue;
     // 随机变量
     cresselia.EncryptionConstant = e;
 
@@ -341,10 +340,6 @@ void loopFindPK() {
       auto shiny_type = ShinyUtil::GetShinyType(pk.PID, tidsid);
 
       if (Shiny::Never != shiny_type) {
-
-        Roaming8bRNG v3;
-        bool b1 = v3.ValidateRoamingEncounter(pk);
-
         std::cout << std::hex << "Encryption=" << pk.EncryptionConstant << std::endl;
         std::cout << std::hex << "PID=" << pk.PID << std::endl;
         std::cout << std::dec << "AbilityIndex=" << pk.AbilityNumber << std::endl;
