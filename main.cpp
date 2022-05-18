@@ -90,7 +90,7 @@ class ShinyUtil {
 
 class Roaming8bRNG {
  public:
-  bool IsPKMMatchIV(const PKM &pk) {
+  bool IsIVOK(const PKM &pk) {
     int flawless = 3;
 
     Xoroshiro128Plus8b xoro(pk.EncryptionConstant);
@@ -129,7 +129,7 @@ class Roaming8bRNG {
     return true;
   }
 
-  void RewritePKM(PKM &pk) {
+  void GeneratePKM(PKM &pk) {
     int flawless = 3;
 
     Xoroshiro128Plus8b xoro(pk.EncryptionConstant);
@@ -156,6 +156,13 @@ class Roaming8bRNG {
       if (ivs[i] == UNSET)
         ivs[i] = (int) xoro.NextUInt(kFlawlessValue + 1);
     }
+
+    pk.IV_HP = ivs[0];
+    pk.IV_ATK = ivs[1];
+    pk.IV_DEF = ivs[2];
+    pk.IV_SPA = ivs[3];
+    pk.IV_SPD = ivs[4];
+    pk.IV_SPE = ivs[5];
 
     pk.PID = pid;
     pk.AbilityNumber = (1 << (int) xoro.NextUInt(2));
@@ -209,6 +216,7 @@ class Roaming8bRNG {
     return true;
   }
 
+ private:
   uint GetRevisedPID(uint fakeOID, uint pid, ITrainerID tr) {
     auto _xor = GetShinyXor(pid, fakeOID);
     auto oid = GetOID(tr.TID, tr.SID);
@@ -323,12 +331,12 @@ void loopFindPK() {
     cresselia.EncryptionConstant = e;
 
     Roaming8bRNG v1;
-    if (v1.IsPKMMatchIV(cresselia)) {
+    if (v1.IsIVOK(cresselia)) {
 
       PKM pk = cresselia;
 
       Roaming8bRNG v2;
-      v2.RewritePKM(pk);
+      v2.GeneratePKM(pk);
 
       auto shiny_type = ShinyUtil::GetShinyType(pk.PID, tidsid);
 
@@ -372,12 +380,12 @@ int main() {
     cresselia.EncryptionConstant = e;
 
     //    Roaming8bRNG v1;
-    //    if (v1.IsPKMMatchIV(cresselia)) {
+    //    if (v1.IsIVOK(cresselia)) {
 
     PKM pk = cresselia;
 
     Roaming8bRNG v2;
-    v2.RewritePKM(pk);
+    v2.GeneratePKM(pk);
 
     //    if (Shiny::AlwaysSquare == pk.shiny) {
     std::cout << std::hex << "Encryption=" << pk.EncryptionConstant << std::endl;
