@@ -1,16 +1,45 @@
 #include <iostream>
 #include <vector>
 
-using uint = uint32_t;
-using ulong = unsigned long;
+#include "Xoroshiro128Plus8b.h"
 
 enum class Shiny {
-  Random = 0,
-  Never,
-  Always,
-  AlwaysStar,
-  AlwaysSquare,
-  FixedValue,
+  //  Random = 0,
+  Never = 1,
+  //  Always = 2,
+  AlwaysStar = 3,
+  AlwaysSquare = 4,
+  //  FixedValue = 5,
+};
+
+enum class Nature : uint8_t {
+  Hardy = 0,
+  Lonely = 1,
+  Brave = 2,
+  Adamant = 3,
+  Naughty = 4,
+  Bold = 5,
+  Docile = 6,
+  Relaxed = 7,
+  Impish = 8,
+  Lax = 9,
+  Timid = 10,
+  Hasty = 11,
+  Serious = 12,
+  Jolly = 13,
+  Naive = 14,
+  Modest = 15,
+  Mild = 16,
+  Quiet = 17,
+  Bashful = 18,
+  Rash = 19,
+  Calm = 20,
+  Gentle = 21,
+  Sassy = 22,
+  Careful = 23,
+  Quirky = 24,
+
+  Random = 25,
 };
 
 struct ITrainerID {
@@ -18,6 +47,7 @@ struct ITrainerID {
   int TID{};
 };
 
+static constexpr uint kFlawlessValue = 31;
 class PKM : public ITrainerID {
  public:
   uint IV_HP{};
@@ -32,66 +62,9 @@ class PKM : public ITrainerID {
   uint PID{};
   // 特性序号(1,2)(1起始)
   uint AbilityNumber{};
+  Nature nature{Nature::Random};
   uint HeightScalar{};
   uint WeightScalar{};
-  Shiny shiny{Shiny::Never};
-
- public:
-  uint ShinyXor() {
-    auto pid = PID;
-    auto upper = (pid >> 16) ^ (uint) SID;
-    return (pid & 0xFFFF) ^ (uint) TID ^ upper;
-  }
-
-  bool IsShiny() {
-    uint PSV = ((PID >> 16) ^ (PID & 0xFFFF)) >> 4;
-    uint TSV = ((uint16_t) TID ^ (uint16_t) SID) >> 4;
-    return PSV == TSV;
-  }
-};
-
-struct Xoroshiro128Plus8b {
- public:
-  Xoroshiro128Plus8b(ulong seed) {
-    s0 = SplitMix64(seed + 0x9E3779B97F4A7C15);
-    s1 = SplitMix64(seed + 0x3C6EF372FE94F82A);
-  }
-
-  uint NextUInt() {
-    return (uint) (Next() >> 32);
-  }
-
-  uint NextUInt(uint max) {
-    auto rnd = NextUInt();
-    return rnd - ((rnd / max) * max);
-  }
-
- private:
-  ulong SplitMix64(ulong seed) {
-    seed = 0xBF58476D1CE4E5B9 * (seed ^ (seed >> 30));
-    seed = 0x94D049BB133111EB * (seed ^ (seed >> 27));
-    return seed ^ (seed >> 31);
-  }
-
-  ulong Next() {
-    auto _s0 = s0;
-    auto _s1 = s1;
-    ulong result = _s0 + _s1;
-    _s1 ^= s0;
-
-    // Final calculations and store back to fields
-    s0 = RotateLeft(_s0, 24) ^ _s1 ^ (_s1 << 16);
-    s1 = RotateLeft(_s1, 37);
-
-    return result;
-  }
-
-  ulong RotateLeft(ulong x, int k) {
-    return (x << k) | (x >> (64 - k));
-  }
-
- private:
-  ulong s0, s1;
 };
 
 class ShinyUtil {
@@ -117,14 +90,14 @@ class ShinyUtil {
 
 class Roaming8bRNG {
  public:
-  bool IsPKMMatchIV(PKM pk) {
-    static const int flawless = 3;
+  bool IsPKMMatchIV(const PKM &pk) {
+    int flawless = 3;
 
     Xoroshiro128Plus8b xoro(pk.EncryptionConstant);
 
     // 要先生成2个数
-    auto fakeTID = xoro.NextUInt();
-    (void) fakeTID;
+    auto fakeOID = xoro.NextUInt();
+    (void) fakeOID;
     auto pid = xoro.NextUInt();
     (void) pid;
 
@@ -137,13 +110,13 @@ class Roaming8bRNG {
       if (ivs[idx] != UNSET)
         continue;
 
-      ivs[idx] = 31;
+      ivs[idx] = kFlawlessValue;
       ++determined;
     }
 
     for (int i = 0; i < ivs.size(); ++i) {
       if (ivs[i] == UNSET)
-        ivs[i] = (int) xoro.NextUInt(31 + 1);
+        ivs[i] = (int) xoro.NextUInt(kFlawlessValue + 1);
     }
 
     if (ivs[0] != pk.IV_HP) return false;
@@ -157,7 +130,7 @@ class Roaming8bRNG {
   }
 
   void RewritePKM(PKM &pk) {
-    static const int flawless = 3;
+    int flawless = 3;
 
     Xoroshiro128Plus8b xoro(pk.EncryptionConstant);
 
@@ -165,7 +138,6 @@ class Roaming8bRNG {
     auto fakeOID = xoro.NextUInt();
     auto pid_bak = xoro.NextUInt();
     auto pid = GetRevisedPID(fakeOID, pid_bak, pk);
-    bool is_shiny = GetIsShiny(pk.TID, pk.SID, pid);
 
     // Check IVs: Create flawless IVs at random indexes, then the random IVs for not flawless.
     std::vector<int> ivs = {UNSET, UNSET, UNSET, UNSET, UNSET, UNSET};
@@ -176,26 +148,24 @@ class Roaming8bRNG {
       if (ivs[idx] != UNSET)
         continue;
 
-      ivs[idx] = 31;
+      ivs[idx] = kFlawlessValue;
       ++determined;
     }
 
     for (int i = 0; i < ivs.size(); ++i) {
       if (ivs[i] == UNSET)
-        ivs[i] = (int) xoro.NextUInt(31 + 1);
+        ivs[i] = (int) xoro.NextUInt(kFlawlessValue + 1);
     }
 
     pk.PID = pid;
     pk.AbilityNumber = (1 << (int) xoro.NextUInt(2));
     pk.HeightScalar = (unsigned char) ((int) xoro.NextUInt(0x81) + (int) xoro.NextUInt(0x80));
     pk.WeightScalar = (unsigned char) ((int) xoro.NextUInt(0x81) + (int) xoro.NextUInt(0x80));
-
-    auto pkShiny = pk.ShinyXor();
-    auto oid = GetOID(pk.TID, pk.SID);
-    pk.shiny = GetRareType(GetShinyXor(pk.PID, oid));
   }
 
-  bool ValidateRoamingEncounter(PKM pk, int flawless = 3) {
+  bool ValidateRoamingEncounter(const PKM &pk) {
+    int flawless = 3;
+
     auto seed = pk.EncryptionConstant;
     if (seed == std::numeric_limits<int>::max())
       return false;// Unity's Rand is [int.MinValue, int.MaxValue)
@@ -216,13 +186,13 @@ class Roaming8bRNG {
       auto idx = (int) xoro.NextUInt(6);
       if (ivs[idx] != UNSET)
         continue;
-      ivs[idx] = 31;
+      ivs[idx] = kFlawlessValue;
       determined++;
     }
 
     for (auto i = 0; i < ivs.size(); i++) {
       if (ivs[i] == UNSET)
-        ivs[i] = (int) xoro.NextUInt(31 + 1);
+        ivs[i] = (int) xoro.NextUInt(kFlawlessValue + 1);
     }
 
     if (ivs[0] != pk.IV_HP) return false;
@@ -239,35 +209,6 @@ class Roaming8bRNG {
     return true;
   }
 
-  uint GetRevisedPID2(uint fakeOID, uint pid, ITrainerID tr) {
-    uint tid = tr.TID;
-    uint sid = tr.SID;
-
-    uint tidsid = ShinyUtil::GetTidSid(tr.TID, tr.SID);
-    auto shinytype = ShinyUtil::GetShinyType(pid, tidsid);
-
-    uint tsv = ShinyUtil::GetShinyValue(tidsid);
-    uint psv = ShinyUtil::GetShinyValue(pid);
-
-    // TODO(wang.song) implement
-    //    if (fixedShiny == 2 && shinytype == 0) {
-    //      shinytype = 2;
-    //    }
-    //    if (fixedShiny == 1) {
-    //      shinytype = 0;
-    //    }
-
-    if (shinytype == Shiny::Never) {
-      if (psv == tsv)
-        return pid ^ 0x10000000;// ensure not shiny
-      return pid;
-    }
-
-    if (psv == tsv)
-      return pid;// already shiny
-    return (pid & 0xFFFF) | (tid ^ sid ^ pid ^ (2 - static_cast<uint>(shinytype))) << 16;
-  }
-
   uint GetRevisedPID(uint fakeOID, uint pid, ITrainerID tr) {
     auto _xor = GetShinyXor(pid, fakeOID);
     auto oid = GetOID(tr.TID, tr.SID);
@@ -282,12 +223,6 @@ class Roaming8bRNG {
     auto isShiny = _xor < 16;
     if (isShiny) {
       // force same shiny star type
-      uint a = tr.TID ^ tr.SID;
-      uint b = pid & 0xFFFF;
-      uint c = _xor == 0 ? 0u : 1u;
-
-      uint r = ((a ^ b ^ c) << 16) | b;
-      return r;
       return (((uint) (tr.TID ^ tr.SID) ^ (pid & 0xFFFF) ^ (_xor == 0 ? 0u : 1u)) << 16) | (pid & 0xFFFF);
     }
     return pid ^ 0x10000000;
@@ -296,12 +231,6 @@ class Roaming8bRNG {
   uint GetOID(int tid, int sid) {
     return (uint) ((sid << 16) | tid);
   }
-
-  bool GetIsShiny(int tid, int sid, uint pid) {
-    return GetIsShiny(pid, GetOID(tid, sid));
-  }
-
-  bool GetIsShiny(uint pid, uint oid) { return GetShinyXor(pid, oid) < 16; }
 
   uint GetShinyXor(uint pid, uint oid) {
     auto _xor = pid ^ oid;
@@ -348,14 +277,11 @@ void verify() {
     cresselia.HeightScalar = 151;
     cresselia.WeightScalar = 120;
 
-    bool is_shiny = cresselia.IsShiny();
     auto shinytype = ShinyUtil::GetShinyType(cresselia.PID, tidsid);
     uint psv = ShinyUtil::GetShinyValue(cresselia.PID);
 
     Roaming8bRNG r;
     bool valid = r.ValidateRoamingEncounter(cresselia);
-    is_shiny = r.GetIsShiny(cresselia.TID, cresselia.SID, cresselia.PID);
-    random();
   }
 
   {
@@ -365,14 +291,11 @@ void verify() {
     cresselia.HeightScalar = 184;
     cresselia.WeightScalar = 88;
 
-    bool is_shiny = cresselia.IsShiny();
     auto shinytype = ShinyUtil::GetShinyType(cresselia.PID, tidsid);
     uint psv = ShinyUtil::GetShinyValue(cresselia.PID);
 
     Roaming8bRNG r;
     bool valid = r.ValidateRoamingEncounter(cresselia);
-    is_shiny = r.GetIsShiny(cresselia.TID, cresselia.SID, cresselia.PID);
-    random();
   }
 }
 
@@ -381,6 +304,9 @@ void loopFindPK() {
   // 先定死的
   cresselia.SID = 2331;
   cresselia.TID = 210519;
+  uint fake_tid = 29463;
+  uint fake_sid = 35571;
+
   cresselia.IV_HP = 31;
   cresselia.IV_ATK = 0;
   cresselia.IV_DEF = 31;
@@ -388,13 +314,11 @@ void loopFindPK() {
   cresselia.IV_SPD = 31;
   cresselia.IV_SPE = 0;
 
-  uint fake_tid = 29463;
-  uint fake_sid = 35571;
   static const uint tidsid = ShinyUtil::GetTidSid(fake_tid, fake_sid);
 
   for (long e = 0; e < (1L << 31); ++e) {
-    if (e != 0x321ae2b4 && e != 0x3d77798f && e != 0x5e7082da && e != 0x62e47e43)
-      continue;
+    //    if (e != 0x321ae2b4 && e != 0x3d77798f && e != 0x5e7082da && e != 0x62e47e43)
+    //      continue;
     // 随机变量
     cresselia.EncryptionConstant = e;
 
