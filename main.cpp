@@ -12,12 +12,15 @@ void FindRoamingPokemon() {
         std::cout << msg << std::endl;
       });
 
+  uint G8SID = 2331;
+  uint G8TID = 210519;
+
+  // FIXME:通过PKHex的窗口tips读到的真的ID需要转换一道
+  uint tidsid = G8SID * 1000000 + G8TID;
+
   ITrainerID trainer;
-  trainer.SID = 2331;
-  trainer.TID = 210519;
-  // FIXME:通过PKHex的窗口tips读到的真的ID
-  trainer.SID = 35571;
-  trainer.TID = 29463;
+  trainer.SID = tidsid & 0xFFFF;
+  trainer.TID = tidsid >> 16;
 
   IVs expect_ivs;
   expect_ivs.IV_HP = 31;
