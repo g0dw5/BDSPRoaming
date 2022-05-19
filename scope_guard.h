@@ -1,28 +1,20 @@
-// Copyright (c) 2020 The Autonavi onlinenavi Authors. All rights reserved.
-// Use of this source code is governed by a business license that can be
-// found in the LICENSE file. See the AUTHORS file for names of contributors.
+#ifndef ROAMINGID__SCOPE_GUARD_H_
+#define ROAMINGID__SCOPE_GUARD_H_
 
-#ifndef ROUTEPATHRECALLER_SRC_UTILITY_INCLUDE_SCOPE_GUARD_H_
-#define ROUTEPATHRECALLER_SRC_UTILITY_INCLUDE_SCOPE_GUARD_H_
-
-#include <stdio.h>
 #include <chrono>
 #include <functional>
 #include <iomanip>
 #include <sstream>
+#include <stdio.h>
 
-class ScopeGuard
-{
+class ScopeGuard {
  public:
   explicit ScopeGuard(std::function<void()> onExitScope)
-      : onExitScope_(onExitScope), dismissed_(false)
-  {
+      : onExitScope_(onExitScope), dismissed_(false) {
   }
 
-  ~ScopeGuard()
-  {
-    if (!dismissed_)
-    {
+  ~ScopeGuard() {
+    if (!dismissed_) {
       onExitScope_();
     }
   }
@@ -34,10 +26,10 @@ class ScopeGuard
   bool dismissed_{false};
 
  private:
-  ScopeGuard(const ScopeGuard&) = delete;
-  ScopeGuard(ScopeGuard&&) = delete;
-  ScopeGuard& operator=(const ScopeGuard&) = delete;
-  ScopeGuard& operator=(ScopeGuard&&) = delete;
+  ScopeGuard(const ScopeGuard &) = delete;
+  ScopeGuard(ScopeGuard &&) = delete;
+  ScopeGuard &operator=(const ScopeGuard &) = delete;
+  ScopeGuard &operator=(ScopeGuard &&) = delete;
 };
 
 #define SCOPEGUARD_LINENAME_CAT(name, line) name##line
@@ -47,22 +39,19 @@ class ScopeGuard
   ScopeGuard SCOPEGUARD_LINENAME(exit, __LINE__)(callback)
 
 // FIXME:其实应该叫ScopeStopWatch
-class FunctionStopWatch
-{
+class FunctionStopWatch {
  public:
   FunctionStopWatch(
       std::string func_name,
-      std::function<void(const std::string&)> fn_log =
-          [](const std::string&) {},
+      std::function<void(const std::string &)> fn_log =
+          [](const std::string &) {},
       int time_out_in_millisecond = -1)
       : func_name_(func_name),
         fn_log_(fn_log),
-        time_out_in_millisecond_(time_out_in_millisecond)
-  {
+        time_out_in_millisecond_(time_out_in_millisecond) {
     tb_ = std::chrono::high_resolution_clock::now();
   }
-  ~FunctionStopWatch()
-  {
+  ~FunctionStopWatch() {
     te_ = std::chrono::high_resolution_clock::now();
     int duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(te_ - tb_)
@@ -93,4 +82,4 @@ class FunctionStopWatch
   decltype(std::chrono::high_resolution_clock::now()) te_;
 };
 
-#endif  // ROUTEPATHRECALLER_SRC_UTILITY_INCLUDE_SCOPE_GUARD_H_
+#endif// ROAMINGID__SCOPE_GUARD_H_
