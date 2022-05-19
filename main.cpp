@@ -7,28 +7,35 @@
 #include "scope_guard.h"
 
 void FindRoamingPokemon() {
+  // 这里改你的诉求
+  uint G8SID = 0;
+  uint G8TID = 999999;
+  uint HP = 31;
+  uint ATK = 0;
+  uint DEF = 31;
+  uint SPA = 31;
+  uint SPD = 31;
+  uint SPE = 0;
+
   FunctionStopWatch stop_watch(
       __PRETTY_FUNCTION__, [](const std::string &msg) {
         std::cout << msg << std::endl;
       });
 
-  uint G8SID = 2331;
-  uint G8TID = 210519;
-
-  // FIXME:通过PKHex的窗口tips读到的真的ID需要转换一道
-  uint tidsid = G8SID * 1000000 + G8TID;
-
   ITrainerID trainer;
+  IVs expect_ivs;
+
+  // 内部计算用的真实ID需要转一下
+  uint tidsid = G8SID * 1000000 + G8TID;
   trainer.SID = tidsid & 0xFFFF;
   trainer.TID = tidsid >> 16;
 
-  IVs expect_ivs;
-  expect_ivs.IV_HP = 31;
-  expect_ivs.IV_ATK = 0;
-  expect_ivs.IV_DEF = 31;
-  expect_ivs.IV_SPA = 31;
-  expect_ivs.IV_SPD = 31;
-  expect_ivs.IV_SPE = 31;
+  expect_ivs.IV_HP = HP;
+  expect_ivs.IV_ATK = ATK;
+  expect_ivs.IV_DEF = DEF;
+  expect_ivs.IV_SPA = SPA;
+  expect_ivs.IV_SPD = SPD;
+  expect_ivs.IV_SPE = SPE;
 
   for (long e = 0; e < (1L << 31); ++e) {
     RoamingFinder finder(trainer, expect_ivs, e);
