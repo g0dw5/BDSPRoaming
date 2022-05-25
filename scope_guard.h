@@ -1,5 +1,5 @@
-#ifndef ROAMINGID__SCOPE_GUARD_H_
-#define ROAMINGID__SCOPE_GUARD_H_
+#ifndef ROAMINGID_SCOPE_GUARD_H_
+#define ROAMINGID_SCOPE_GUARD_H_
 
 #include <chrono>
 #include <functional>
@@ -82,4 +82,4 @@ class FunctionStopWatch {
   decltype(std::chrono::high_resolution_clock::now()) te_;
 };
 
-#endif// ROAMINGID__SCOPE_GUARD_H_
+#endif// ROAMINGID_SCOPE_GUARD_H_
