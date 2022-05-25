@@ -9,4 +9,5 @@ add_executable(RoamingID
         Xoroshiro128Plus8b.h
         definitions.h
         thread_pool.h scope_guard.h
+        arg_op.cpp arg_op.h
         )

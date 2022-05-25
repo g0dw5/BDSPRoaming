@@ -1,13 +1,17 @@
 #include <cmath>
 #include <iostream>
 #include <list>
+#include <regex>
 #include <vector>
 
 #include "Xoroshiro128Plus8b.h"
 #include "roaming_finder.h"
 
+#include "arg_op.h"
 #include "scope_guard.h"
 #include "thread_pool.h"
+
+using namespace OpUtils;
 
 class IProgress {
  public:
@@ -89,16 +93,16 @@ class CmdProgress : public IProgress {
   char *m_pszPercent = nullptr;
 };
 
-void FindRoamingPokemon() {
+void FindRoamingPokemon(int sid, int tid, int hp, int atk, int def, int spa, int spd, int spe) {
   // 这里改你的诉求
-  uint G8SID = 0;
-  uint G8TID = 999999;
-  uint HP = 31;
-  uint ATK = 0;
-  uint DEF = 31;
-  uint SPA = 31;
-  uint SPD = 31;
-  uint SPE = 0;
+  uint G8SID = sid;
+  uint G8TID = tid;
+  uint HP = hp;
+  uint ATK = atk;
+  uint DEF = def;
+  uint SPA = spa;
+  uint SPD = spd;
+  uint SPE = spe;
   uint thread_count = std::thread::hardware_concurrency();
 
   FunctionStopWatch stop_watch(
@@ -122,7 +126,7 @@ void FindRoamingPokemon() {
   expect_ivs.IV_SPE = SPE;
 
   uint end_seed = 0x80000000;
-  uint batch_count = thread_count * 128;
+  uint batch_count = thread_count * 256;
   uint seed_count_in_each_batch = end_seed / batch_count;
 
   using PKMs = std::vector<PKM>;
@@ -187,7 +191,104 @@ void FindRoamingPokemon() {
   prog.wait();
 }
 
+struct sArgs {
+  int sid{};
+  int tid{999999};
+  std::string ivs{"31,0,31,31,31,0"};
+};
+sArgs g_args;
+
+// 数字正则
+std::regex reg("^(0|[1-9][0-9]*|-[1-9][0-9]*)$");
+
+sArgDef g_opt_def[] = {
+    {'s', "sid", must_have::must_y, arg_required,
+     "训练家里ID",
+     [](char *optarg, void *data, std::string &strErr) {
+       if (nullptr == optarg) {
+         strErr = "缺失参数值";
+         return false;
+       }
+
+       std::string str(optarg);
+       std::regex reg("^(0|[1-9][0-9]*|-[1-9][0-9]*)$");
+       if (!std::regex_match(str.begin(), str.end(), reg)) {
+         strErr = "SID输入非数字";
+         return false;
+       }
+
+       int sid = std::stoi(optarg);
+       if (sid < 0 || sid > 4294) {
+         strErr = "SID需要在[0,4294]之间";
+         return false;
+       }
+
+       int *psid = static_cast<int *>(data);
+       *psid = sid;
+       return true;
+     },
+     &(g_args.sid)},
+    {'t', "tid", must_have::must_y, arg_required,
+     "训练家表ID",
+     [](char *optarg, void *data, std::string &strErr) {
+       if (nullptr == optarg) {
+         strErr = "缺失参数值";
+         return false;
+       }
+
+       std::string str(optarg);
+       if (!std::regex_match(str.begin(), str.end(), reg)) {
+         strErr = "TID输入非数字";
+         return false;
+       }
+
+       int tid = std::stoi(optarg);
+       if (tid < 0 || tid > 999999) {
+         strErr = "TID需要在[0,999999]之间";
+         return false;
+       }
+
+       int *ptid = static_cast<int *>(data);
+       *ptid = tid;
+       return true;
+     },
+     &(g_args.tid)},
+    {'i', "ivs", must_have::must_y, arg_required,
+     "个体值(HP,物攻,物防,特攻,特防,速度.例:31,0,31,31,31,0)",
+     [](char *optarg, void *data, std::string &strErr) {
+       if (nullptr == optarg) {
+         strErr = "缺失参数值";
+         return false;
+       }
+       std::string *pivs = static_cast<std::string *>(data);
+       *pivs = optarg;
+       return true;
+     },
+     &(g_args.ivs)}};
+
 int main(int argc, char *argv[]) {
-  FindRoamingPokemon();
+  if (!parse_cmd_args(argc, argv, g_opt_def,
+                      sizeof(g_opt_def) / sizeof(sArgDef)))
+    return 1;
+
+  std::vector<int> ivs;
+
+  std::istringstream iss(g_args.ivs);
+  std::string elem;
+  while (std::getline(iss, elem, ',')) {
+    if (!std::regex_match(elem.begin(), elem.end(), reg)) {
+      printf("存在个体值非数字\n");
+      return 2;
+    }
+
+    ivs.push_back(std::stoi(elem));
+  }
+
+  if (ivs.size() != 6) {
+    printf("个体值不是6个\n");
+    return 2;
+  }
+
+  FindRoamingPokemon(g_args.sid, g_args.tid, ivs[0], ivs[1], ivs[2], ivs[3], ivs[4], ivs[5]);
   return 0;
 }
