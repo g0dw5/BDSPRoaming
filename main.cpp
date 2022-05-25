@@ -2,6 +2,8 @@
 #include <iostream>
 #include <list>
 #include <regex>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "Xoroshiro128Plus8b.h"
@@ -93,7 +95,7 @@ class CmdProgress : public IProgress {
   char *m_pszPercent = nullptr;
 };
 
-void FindRoamingPokemon(int sid, int tid, int hp, int atk, int def, int spa, int spd, int spe) {
+void FindRoamingPokemon(int sid, int tid, int hp, int atk, int def, int spa, int spd, int spe, const std::unordered_set<uint> &seed_white_list) {
   // 这里改你的诉求
   uint G8SID = sid;
   uint G8TID = tid;
@@ -144,10 +146,13 @@ void FindRoamingPokemon(int sid, int tid, int hp, int atk, int def, int spa, int
       if (batch == batch_count - 1)
         e_end = end_seed;
 
-      futures.emplace_back(pool.enqueue([e_beg, e_end, &trainer, &expect_ivs] {
+      futures.emplace_back(pool.enqueue([e_beg, e_end, &trainer, &expect_ivs, &seed_white_list] {
         PKMs pkms;
 
         for (uint e = e_beg; e < e_end; ++e) {
+          if (!seed_white_list.empty() && !seed_white_list.count(e))
+            continue;
+
           RoamingFinder finder(trainer, expect_ivs, e);
 
           if (finder.Step1IsIVLegal()) {
@@ -174,7 +179,6 @@ void FindRoamingPokemon(int sid, int tid, int hp, int atk, int def, int spa, int
       prog.Progress(double(over_count + 1) / batch_count, nullptr);
       ++over_count;
     }
-    prog.ProgOver(true, nullptr);
 
     for (const auto &pkm: shiny_pkms) {
       std::cout << std::hex << "Encryption=" << pkm.EncryptionConstant << std::endl;
@@ -185,6 +189,8 @@ void FindRoamingPokemon(int sid, int tid, int hp, int atk, int def, int spa, int
       std::cout << "ShinyType=" << GetShinyType(pkm.shiny) << std::endl;
       std::cout << std::endl;
     }
+
+    prog.ProgOver(true, nullptr);
   });
   t.detach();
 
@@ -289,6 +295,28 @@ int main(int argc, char *argv[]) {
     return 2;
   }
 
-  FindRoamingPokemon(g_args.sid, g_args.tid, ivs[0], ivs[1], ivs[2], ivs[3], ivs[4], ivs[5]);
+  std::unordered_set<uint> empty_seed_set;
+
+  // 其实seed确定了，IV就确定了，是不是闪，是什么闪就确定了
+  // 换句话说，所有玩这个游戏的，游走怪只要是同样的IV，seed100%一样
+  // 就可以缓存所有高需求的seed，只对这些seed重新算下pid就行了
+  std::unordered_map<std::string, std::unordered_set<uint>> precalculated_ivs_to_seed{
+      {"31,31,31,31,31,31",
+       {0x60d489e, 0xf962809, 0x1707a1bc, 0x256512ac,
+        0x2b2e0bc5, 0x3e9e0489, 0x429f7bdd, 0x4fcd2b6c,
+        0x5ce9aa13, 0x65aded09, 0x6707f338, 0x6b72fe4d,
+        0x7171a30b, 0x733dd448, 0x7a928de5, 0x7ef34d82}},
+      {"31,0,31,31,31,0",
+       {0x21bbd6a, 0x630fbe9f, 0x6a84b6ed, 0x6c6d3a44,
+        0x745e444f}},
+      {"31,0,31,31,31,31",
+       {0xbd5a6b6, 0x1434d7a3, 0x14a4e19d, 0x16356604,
+        0x258ffeb3, 0x2811e041, 0x2fbfee90, 0x4318207a,
+        0x57003093, 0x6ea9022c, 0x7d5b6f50}},
+  };
+
+  // 找不到加一个就加一个了
+  auto seed_list = precalculated_ivs_to_seed[g_args.ivs];
+  FindRoamingPokemon(g_args.sid, g_args.tid, ivs[0], ivs[1], ivs[2], ivs[3], ivs[4], ivs[5], seed_list);
   return 0;
 }
