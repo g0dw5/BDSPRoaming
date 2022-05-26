@@ -93,10 +93,7 @@ uint OverworldFinder::GetRevisedPID(uint pid, ITrainerID tr)
   if (Shiny::kNone != shiny_type_by_need)
   {
     // 期望闪,真的不闪,通过修改PID使之闪
-    return (((uint)(tr.TID ^ tr.SID) ^ (pid & 0xFFFF) ^
-             (Shiny::kSquare == shiny_type_by_need ? 0u : 1u))
-            << 16) |
-           (pid & 0xFFFF);
+    return MakeShinyPID(tr.SID, tr.TID, pid, shiny_type_by_need);
   }
   else
   {

@@ -57,6 +57,19 @@ class IRNGPokemonFinder
     }
   }
 
+  static uint MakeShinyPID(uint sid, uint tid, uint pid, Shiny shiny_type)
+  {
+    if (Shiny::kNone == shiny_type)
+      __builtin_trap();
+
+    // 通过PID低16位修改PID高16位
+    uint pid_low = pid & 0xFFFF;
+    uint shiny_type_mask = Shiny::kSquare == shiny_type ? 0u : 1u;
+    uint pid_high = (uint)(tid ^ sid) ^ pid_low ^ shiny_type_mask;
+
+    return (pid_high << 16) | pid_low;
+  }
+
  protected:
   uint seed_{};
   const ITrainerID& trainer_;
