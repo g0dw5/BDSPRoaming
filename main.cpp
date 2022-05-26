@@ -9,7 +9,6 @@
 #include "rng_pokemon_finder.h"
 
 #include "arg_op.h"
-#include "scope_guard.h"
 #include "thread_pool.h"
 
 using namespace OpUtils;
@@ -154,9 +153,7 @@ void FindPokemon(RNDType mode,
           auto finder = RNGPokemonFinderFactory::CreateFinder(mode, trainer, expect_ivs, e, shiny_type_you_want, flawless_count);
           if (finder->Step1IsSatisfied()) {
             const auto &pkm = finder->Step2GetPokemon();
-            if (Shiny::Never != pkm.shiny) {
-              pkms.push_back(pkm);
-            }
+            pkms.push_back(pkm);
           }
         }
 
@@ -177,6 +174,8 @@ void FindPokemon(RNDType mode,
       ++over_count;
     }
 
+    static constexpr uint32_t kMaxNotShiny = 32;
+    uint32_t output_count{};
     for (const auto &pkm: shiny_pkms) {
       std::cout << std::hex << "Encryption=" << pkm.EncryptionConstant << std::endl;
       std::cout << std::hex << "PID=" << pkm.PID << std::endl;
@@ -185,6 +184,12 @@ void FindPokemon(RNDType mode,
       std::cout << std::dec << "WeightScalar=" << pkm.WeightScalar << std::endl;
       std::cout << "ShinyType=" << GetShinyType(pkm.shiny) << std::endl;
       std::cout << std::endl;
+
+      ++output_count;
+      // 不闪的防止打印太多(FIXME:有空加点随机性)
+      if (Shiny::Never == shiny_type_you_want && output_count > kMaxNotShiny) {
+        break;
+      }
     }
 
     prog.ProgOver(true, nullptr);
