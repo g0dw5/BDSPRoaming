@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 add_executable(RoamingID
         main.cpp
-        rng_pokemon_finder.h
+        rng_pokemon_finder.cpp rng_pokemon_finder.h
         roaming_finder.cpp roaming_finder.h
         overworld_finder.cpp overworld_finder.h
         Xoroshiro128Plus8b.h Xoroshiro128Plus.h

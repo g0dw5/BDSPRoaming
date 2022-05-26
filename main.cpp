@@ -6,8 +6,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "overworld_finder.h"
-#include "roaming_finder.h"
+#include "rng_pokemon_finder.h"
 
 #include "arg_op.h"
 #include "scope_guard.h"
@@ -95,9 +94,11 @@ class CmdProgress : public IProgress {
   char *m_pszPercent = nullptr;
 };
 
-void FindRoamingPokemon(int sid, int tid,
-                        int hp, int atk, int def, int spa, int spd, int spe,
-                        const std::unordered_set<uint> &seed_white_list) {
+void FindPokemon(RNDType mode,
+                 int sid, int tid,
+                 int hp, int atk, int def, int spa, int spd, int spe,
+                 Shiny shiny_type_you_want, int flawless_count,
+                 const std::unordered_set<uint> &seed_white_list) {
   // 这里改你的诉求
   uint G8SID = sid;
   uint G8TID = tid;
@@ -108,11 +109,6 @@ void FindRoamingPokemon(int sid, int tid,
   uint SPD = spd;
   uint SPE = spe;
   uint thread_count = std::thread::hardware_concurrency();
-
-  FunctionStopWatch stop_watch(
-      __PRETTY_FUNCTION__, [](const std::string &msg) {
-        std::cout << msg << std::endl;
-      });
 
   ITrainerID trainer;
   IVs expect_ivs;
@@ -148,18 +144,16 @@ void FindRoamingPokemon(int sid, int tid,
       if (batch == batch_count - 1)
         e_end = end_seed;
 
-      futures.emplace_back(pool.enqueue([e_beg, e_end, &trainer, &expect_ivs, &seed_white_list] {
+      futures.emplace_back(pool.enqueue([e_beg, e_end, mode, shiny_type_you_want, flawless_count, &trainer, &expect_ivs, &seed_white_list] {
         PKMs pkms;
 
         for (ulong e = e_beg; e < e_end; ++e) {
           if (!seed_white_list.empty() && !seed_white_list.count(e))
             continue;
 
-          // TODO(wang.song) param from input
-          RoamingFinder finder(trainer, expect_ivs, e, Shiny::AlwaysSquare, 0);
-
-          if (finder.Step1IsSatisfied()) {
-            const auto &pkm = finder.Step2GetPokemon();
+          auto finder = RNGPokemonFinderFactory::CreateFinder(mode, trainer, expect_ivs, e, shiny_type_you_want, flawless_count);
+          if (finder->Step1IsSatisfied()) {
+            const auto &pkm = finder->Step2GetPokemon();
             if (Shiny::Never != pkm.shiny) {
               pkms.push_back(pkm);
             }
@@ -201,9 +195,12 @@ void FindRoamingPokemon(int sid, int tid,
 }
 
 struct sArgs {
+  RNDType mode{RNDType::kBDSPRoaming};
   int sid{};
   int tid{999999};
   std::string ivs{"31,0,31,31,31,0"};
+  Shiny shiny_type_you_want{Shiny::AlwaysSquare};
+  int flawless_count{3};
 };
 sArgs g_args;
 
@@ -298,12 +295,10 @@ int main(int argc, char *argv[]) {
     return 2;
   }
 
-  std::unordered_set<uint> empty_seed_set;
-
   // 其实seed确定了，IV就确定了，是不是闪，是什么闪就确定了
   // 换句话说，所有玩这个游戏的，游走怪只要是同样的IV，seed100%一样
   // 就可以缓存所有高需求的seed，只对这些seed重新算下pid就行了
-  std::unordered_map<std::string, std::unordered_set<uint>> precalculated_ivs_to_seed{
+  std::unordered_map<std::string, std::unordered_set<uint>> precalculated_bdsp_ivs_to_seed{
       {"31,31,31,31,31,31",
        {0x60d489e, 0xf962809, 0x1707a1bc, 0x256512ac,
         0x2b2e0bc5, 0x3e9e0489, 0x429f7bdd, 0x4fcd2b6c,
@@ -324,8 +319,18 @@ int main(int argc, char *argv[]) {
         0xa3fde2ad, 0xdc52ec02, 0xdd32dc34, 0xfaea4706}},
   };
 
-  // 找不到加一个就加一个了
-  auto seed_list = precalculated_ivs_to_seed[g_args.ivs];
-  FindRoamingPokemon(g_args.sid, g_args.tid, ivs[0], ivs[1], ivs[2], ivs[3], ivs[4], ivs[5], seed_list);
+  std::unordered_set<uint> seed_white_list;
+  switch (g_args.mode) {
+    case RNDType::kSWSHOverworld: {
+      break;
+    }
+    case RNDType::kBDSPRoaming: {
+      // 找不到加一个就加一个了
+      seed_white_list = precalculated_bdsp_ivs_to_seed[g_args.ivs];
+      break;
+    }
+  }
+
+  FindPokemon(g_args.mode, g_args.sid, g_args.tid, ivs[0], ivs[1], ivs[2], ivs[3], ivs[4], ivs[5], g_args.shiny_type_you_want, g_args.flawless_count, seed_white_list);
   return 0;
 }

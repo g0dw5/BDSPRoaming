@@ -18,6 +18,7 @@ class IRNGPokemonFinder {
     pkm_.SID = trainer.SID;
     pkm_.TID = trainer.TID;
   }
+  virtual ~IRNGPokemonFinder() = default;
 
  public:
   // 验证IV/闪是否符合条件,生成完EC/PID
@@ -56,6 +57,11 @@ class IRNGPokemonFinder {
 
   static constexpr uint kFlawlessValue = 31;
   static constexpr int kUnsetIV = -1;
+};
+
+class RNGPokemonFinderFactory {
+ public:
+  static std::unique_ptr<IRNGPokemonFinder> CreateFinder(RNDType type, const ITrainerID &trainer, const IVs &ivs, uint seed, Shiny shiny_type_you_want, int flawless_count);
 };
 
 #endif//ROAMINGID__RNG_POKEMON_FINDER_H_
