@@ -8,20 +8,20 @@
 
 bool OverworldFinder::Step1IsIVLegal() {
   pkm_.EncryptionConstant = rnd_.NextInt();
-  auto pid = rnd_.NextInt();
+  uint pid = rnd_.NextInt();
 
   std::vector<int> ivs{kUnsetIV, kUnsetIV, kUnsetIV, kUnsetIV, kUnsetIV, kUnsetIV};
 
   // 用完美个数取index,剩下的随机个体值
-  auto determined = 0;
+  int determined = 0;
   while (determined < kFlawlessCount) {
-    auto idx = (int) rnd_.NextInt(6);
+    int idx = (int) rnd_.NextInt(6);
     if (ivs[idx] != kUnsetIV)
       continue;
 
     ivs[idx] = kFlawlessValue;
 
-    auto expect_value = *((uint *) (&expect_ivs_) + idx);
+    uint expect_value = *((uint *) (&expect_ivs_) + idx);
     if (ivs[idx] != expect_value)
       return false;
 
@@ -32,7 +32,7 @@ bool OverworldFinder::Step1IsIVLegal() {
     if (ivs[idx] == kUnsetIV) {
       ivs[idx] = (int) rnd_.NextInt(kFlawlessValue + 1);
 
-      auto expect_value = *((uint *) (&expect_ivs_) + idx);
+      uint expect_value = *((uint *) (&expect_ivs_) + idx);
       if (ivs[idx] != expect_value)
         return false;
     }
@@ -54,9 +54,9 @@ bool OverworldFinder::Step1IsIVLegal() {
   pkm_.IV_SPE = ivs[5];
 
   // 根据闪的状态修正一下PID
-  auto revised_pid = GetRevisedPID(pid, trainer_);
+  uint revised_pid = GetRevisedPID(pid, trainer_);
   pkm_.PID = revised_pid;
-  auto oid = GetOID(pkm_.TID, pkm_.SID);
+  uint oid = GetOID(pkm_.TID, pkm_.SID);
   pkm_.shiny = GetRareType(GetShinyXor(pkm_.PID, oid));
 
   return true;
@@ -71,9 +71,9 @@ const PKM &OverworldFinder::Step2GetPokemon() {
 
 uint OverworldFinder::GetRevisedPID(uint pid, ITrainerID tr) {
   // TODO(wang.song) 跟BDSP游走不同,这里可以设置成任意的闪类型,看看是不是通过加查询参数进行统一化的处理
-  auto fake_xor = 0;
-  auto oid = GetOID(tr.TID, tr.SID);
-  auto real_xor = GetShinyXor(pid, oid);
+  uint fake_xor = 0;
+  uint oid = GetOID(tr.TID, tr.SID);
+  uint real_xor = GetShinyXor(pid, oid);
 
   auto fake_shiny_type = GetRareType(fake_xor);
   auto real_shiny_type = GetRareType(real_xor);
@@ -82,7 +82,7 @@ uint OverworldFinder::GetRevisedPID(uint pid, ITrainerID tr) {
   if (fake_shiny_type == real_shiny_type)
     return pid;
 
-  auto is_fake_shiny = fake_xor < 16;
+  bool is_fake_shiny = fake_xor < 16;
   if (is_fake_shiny) {
     // 推算闪,真的不闪,通过修改PID使之闪
     return (((uint) (tr.TID ^ tr.SID) ^ (pid & 0xFFFF) ^ (fake_xor == 0 ? 0u : 1u)) << 16) | (pid & 0xFFFF);
@@ -97,7 +97,7 @@ uint OverworldFinder::GetOID(int tid, int sid) {
 }
 
 uint OverworldFinder::GetShinyXor(uint pid, uint oid) {
-  auto _xor = pid ^ oid;
+  uint _xor = pid ^ oid;
   return (_xor ^ (_xor >> 16)) & 0xFFFF;
 }
 
