@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "Xoroshiro128Plus8b.h"
+#include "overworld_finder.h"
 #include "roaming_finder.h"
 
 #include "arg_op.h"
