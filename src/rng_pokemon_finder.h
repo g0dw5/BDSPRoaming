@@ -38,19 +38,19 @@ class IRNGPokemonFinder
     return (_xor ^ (_xor >> 16)) & 0xFFFF;
   }
 
-  static Shiny GetRareType(uint _xor)
+  static Shiny GetShinyType(uint _xor)
   {
     if (_xor == 0)
     {
-      return Shiny::AlwaysSquare;
+      return Shiny::kSquare;
     }
     else if (_xor < 16)
     {
-      return Shiny::AlwaysStar;
+      return Shiny::kStar;
     }
     else
     {
-      return Shiny::Never;
+      return Shiny::kNone;
     }
   }
 

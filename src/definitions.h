@@ -19,23 +19,20 @@ enum class RNDType
 
 enum class Shiny
 {
-  //  Random = 0,
-  Never = 1,
-  //  Always = 2,
-  AlwaysStar = 3,
-  AlwaysSquare = 4,
-  //  FixedValue = 5,
+  kNone,
+  kStar,
+  kSquare,
 };
 
 static std::string GetShinyType(Shiny shiny)
 {
   switch (shiny)
   {
-    case Shiny::Never:
+    case Shiny::kNone:
       return "None";
-    case Shiny::AlwaysStar:
+    case Shiny::kStar:
       return "Star";
-    case Shiny::AlwaysSquare:
+    case Shiny::kSquare:
       return "Square";
   }
 }
@@ -67,7 +64,7 @@ class PKM : public ITrainerID, public IVs
   uint HeightScalar{};
   uint WeightScalar{};
 
-  Shiny shiny{Shiny::Never};
+  Shiny shiny{Shiny::kNone};
 };
 
 class ShinyUtil
@@ -84,10 +81,10 @@ class ShinyUtil
     uint p = GetShinyXor(pid);
     uint t = GetShinyXor(tidsid);
     if (p == t)
-      return Shiny::AlwaysSquare;
+      return Shiny::kSquare;
     if ((p ^ t) < 0x10)
-      return Shiny::AlwaysStar;
-    return Shiny::Never;
+      return Shiny::kStar;
+    return Shiny::kNone;
   }
 };
 

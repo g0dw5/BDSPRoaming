@@ -238,7 +238,7 @@ struct sArgs
   int sid{};
   int tid{999999};
   std::string ivs{"31,0,31,31,31,0"};
-  Shiny shiny_type_you_want{Shiny::AlwaysSquare};
+  Shiny shiny_type_you_want{Shiny::kSquare};
   int flawless_count{3};
 };
 sArgs g_args;
@@ -359,17 +359,17 @@ sArgDef g_opt_def[] = {
        Shiny* pshiny = static_cast<Shiny*>(data);
        if ("none" == str)
        {
-         *pshiny = Shiny::Never;
+         *pshiny = Shiny::kNone;
          return true;
        }
        else if ("star" == str)
        {
-         *pshiny = Shiny::AlwaysStar;
+         *pshiny = Shiny::kStar;
          return true;
        }
        else if ("square" == str)
        {
-         *pshiny = Shiny::AlwaysSquare;
+         *pshiny = Shiny::kSquare;
          return true;
        }
        else

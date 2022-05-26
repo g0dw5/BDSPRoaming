@@ -62,7 +62,7 @@ bool OverworldFinder::Step1IsSatisfied()
   uint revised_pid = GetRevisedPID(pid, trainer_);
   pkm_.PID = revised_pid;
   uint oid = GetOID(pkm_.TID, pkm_.SID);
-  pkm_.shiny = GetRareType(GetShinyXor(pkm_.PID, oid));
+  pkm_.shiny = GetShinyType(GetShinyXor(pkm_.PID, oid));
 
   return true;
 }
@@ -84,17 +84,17 @@ uint OverworldFinder::GetRevisedPID(uint pid, ITrainerID tr)
   Shiny shiny_type_by_need = shiny_type_you_want_;
 
   uint oid = GetOID(tr.TID, tr.SID);
-  auto shiny_type_by_pid = GetRareType(GetShinyXor(pid, oid));
+  auto shiny_type_by_pid = GetShinyType(GetShinyXor(pid, oid));
 
   // 期望跟真实一致(都闪或都不闪)
   if (shiny_type_by_need == shiny_type_by_pid)
     return pid;
 
-  if (Shiny::Never != shiny_type_by_need)
+  if (Shiny::kNone != shiny_type_by_need)
   {
     // 期望闪,真的不闪,通过修改PID使之闪
     return (((uint)(tr.TID ^ tr.SID) ^ (pid & 0xFFFF) ^
-             (Shiny::AlwaysSquare == shiny_type_by_need ? 0u : 1u))
+             (Shiny::kSquare == shiny_type_by_need ? 0u : 1u))
             << 16) |
            (pid & 0xFFFF);
   }

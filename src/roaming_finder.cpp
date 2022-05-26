@@ -17,7 +17,7 @@ bool RoamingFinder::Step1IsSatisfied()
   pkm_.PID = revised_pid;
 
   uint oid = GetOID(pkm_.TID, pkm_.SID);
-  pkm_.shiny = GetRareType(GetShinyXor(pkm_.PID, oid));
+  pkm_.shiny = GetShinyType(GetShinyXor(pkm_.PID, oid));
 
   if (shiny_type_you_want_ != pkm_.shiny)
     return false;
@@ -85,20 +85,20 @@ const PKM& RoamingFinder::Step2GetPokemon()
 
 uint RoamingFinder::GetRevisedPID(uint oid_from_rand, uint pid, ITrainerID tr)
 {
-  auto shiny_type_by_rand = GetRareType(GetShinyXor(pid, oid_from_rand));
+  auto shiny_type_by_rand = GetShinyType(GetShinyXor(pid, oid_from_rand));
 
   uint oid = GetOID(tr.TID, tr.SID);
-  auto shiny_type_by_pid = GetRareType(GetShinyXor(pid, oid));
+  auto shiny_type_by_pid = GetShinyType(GetShinyXor(pid, oid));
 
   // 推算跟真实一致(都闪或都不闪)
   if (shiny_type_by_rand == shiny_type_by_pid)
     return pid;
 
-  if (Shiny::Never != shiny_type_by_rand)
+  if (Shiny::kNone != shiny_type_by_rand)
   {
     // 推算闪,真的不闪,通过修改PID使之闪
     return (((uint)(tr.TID ^ tr.SID) ^ (pid & 0xFFFF) ^
-             (Shiny::AlwaysSquare == shiny_type_by_rand ? 0u : 1u))
+             (Shiny::kSquare == shiny_type_by_rand ? 0u : 1u))
             << 16) |
            (pid & 0xFFFF);
   }
