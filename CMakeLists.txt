@@ -13,3 +13,5 @@ add_executable(RoamingID
         thread_pool.h scope_guard.h
         arg_op.cpp arg_op.h
         )
+
+target_link_libraries(RoamingID pthread)
