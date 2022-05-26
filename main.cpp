@@ -95,7 +95,9 @@ class CmdProgress : public IProgress {
   char *m_pszPercent = nullptr;
 };
 
-void FindRoamingPokemon(int sid, int tid, int hp, int atk, int def, int spa, int spd, int spe, const std::unordered_set<uint> &seed_white_list) {
+void FindRoamingPokemon(int sid, int tid,
+                        int hp, int atk, int def, int spa, int spd, int spe,
+                        const std::unordered_set<uint> &seed_white_list) {
   // 这里改你的诉求
   uint G8SID = sid;
   uint G8TID = tid;
@@ -153,9 +155,10 @@ void FindRoamingPokemon(int sid, int tid, int hp, int atk, int def, int spa, int
           if (!seed_white_list.empty() && !seed_white_list.count(e))
             continue;
 
-          RoamingFinder finder(trainer, expect_ivs, e);
+          // TODO(wang.song) param from input
+          RoamingFinder finder(trainer, expect_ivs, e, Shiny::AlwaysSquare, 0);
 
-          if (finder.Step1IsIVLegal()) {
+          if (finder.Step1IsSatisfied()) {
             const auto &pkm = finder.Step2GetPokemon();
             if (Shiny::Never != pkm.shiny) {
               pkms.push_back(pkm);

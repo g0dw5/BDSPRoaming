@@ -6,15 +6,26 @@
 
 #include <vector>
 
-bool RoamingFinder::Step1IsIVLegal() {
+bool RoamingFinder::Step1IsSatisfied() {
+  pkm_.EncryptionConstant = seed_;
+
   uint oid_from_rand = rnd_.NextUInt();
   uint pid = rnd_.NextUInt();
+  // 根据闪的状态修正一下PID
+  uint revised_pid = GetRevisedPID(oid_from_rand, pid, trainer_);
+  pkm_.PID = revised_pid;
+
+  uint oid = GetOID(pkm_.TID, pkm_.SID);
+  pkm_.shiny = GetRareType(GetShinyXor(pkm_.PID, oid));
+
+  if (shiny_type_you_want_ != pkm_.shiny)
+    return false;
 
   std::vector<int> ivs{kUnsetIV, kUnsetIV, kUnsetIV, kUnsetIV, kUnsetIV, kUnsetIV};
 
   // 用完美个数取index,剩下的随机个体值
   int determined = 0;
-  while (determined < kFlawlessCount) {
+  while (determined < flawless_count_) {
     int idx = (int) rnd_.NextUInt(6);
     if (ivs[idx] != kUnsetIV)
       continue;
@@ -53,12 +64,6 @@ bool RoamingFinder::Step1IsIVLegal() {
   pkm_.IV_SPD = ivs[4];
   pkm_.IV_SPE = ivs[5];
 
-  // 根据闪的状态修正一下PID
-  uint revised_pid = GetRevisedPID(oid_from_rand, pid, trainer_);
-  pkm_.PID = revised_pid;
-  uint oid = GetOID(pkm_.TID, pkm_.SID);
-  pkm_.shiny = GetRareType(GetShinyXor(pkm_.PID, oid));
-
   return true;
 }
 
@@ -86,24 +91,5 @@ uint RoamingFinder::GetRevisedPID(uint oid_from_rand, uint pid, ITrainerID tr) {
   } else {
     // 推算不闪,真的闪,随便找了个方式把PID变不闪
     return pid ^ 0x10000000;
-  }
-}
-
-uint RoamingFinder::GetOID(int tid, int sid) {
-  return (uint) ((sid << 16) | tid);
-}
-
-uint RoamingFinder::GetShinyXor(uint pid, uint oid) {
-  uint _xor = pid ^ oid;
-  return (_xor ^ (_xor >> 16)) & 0xFFFF;
-}
-
-Shiny RoamingFinder::GetRareType(uint _xor) {
-  if (_xor == 0) {
-    return Shiny::AlwaysSquare;
-  } else if (_xor < 16) {
-    return Shiny::AlwaysStar;
-  } else {
-    return Shiny::Never;
   }
 }

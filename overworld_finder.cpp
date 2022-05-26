@@ -6,7 +6,7 @@
 
 #include <vector>
 
-bool OverworldFinder::Step1IsIVLegal() {
+bool OverworldFinder::Step1IsSatisfied() {
   pkm_.EncryptionConstant = rnd_.NextInt();
   uint pid = rnd_.NextInt();
 
@@ -14,7 +14,7 @@ bool OverworldFinder::Step1IsIVLegal() {
 
   // 用完美个数取index,剩下的随机个体值
   int determined = 0;
-  while (determined < kFlawlessCount) {
+  while (determined < flawless_count_) {
     int idx = (int) rnd_.NextInt(6);
     if (ivs[idx] != kUnsetIV)
       continue;
@@ -71,7 +71,7 @@ const PKM &OverworldFinder::Step2GetPokemon() {
 
 uint OverworldFinder::GetRevisedPID(uint pid, ITrainerID tr) {
   // TODO(wang.song) 跟BDSP游走不同,这里可以设置成任意的闪类型,want_shiny_type可设置为入参
-  Shiny shiny_type_by_need = Shiny::AlwaysSquare;
+  Shiny shiny_type_by_need = shiny_type_you_want_;
 
   uint oid = GetOID(tr.TID, tr.SID);
   auto shiny_type_by_pid = GetRareType(GetShinyXor(pid, oid));
@@ -86,24 +86,5 @@ uint OverworldFinder::GetRevisedPID(uint pid, ITrainerID tr) {
   } else {
     // 期望不闪,真的闪,随便找了个方式把PID变不闪
     return pid ^ 0x10000000;
-  }
-}
-
-uint OverworldFinder::GetOID(int tid, int sid) {
-  return (uint) ((sid << 16) | tid);
-}
-
-uint OverworldFinder::GetShinyXor(uint pid, uint oid) {
-  uint _xor = pid ^ oid;
-  return (_xor ^ (_xor >> 16)) & 0xFFFF;
-}
-
-Shiny OverworldFinder::GetRareType(uint _xor) {
-  if (_xor == 0) {
-    return Shiny::AlwaysSquare;
-  } else if (_xor < 16) {
-    return Shiny::AlwaysStar;
-  } else {
-    return Shiny::Never;
   }
 }

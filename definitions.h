@@ -11,6 +11,11 @@
 using uint = uint32_t;
 using ulong = unsigned long;
 
+enum class RNDType {
+  kSWSHOverworld,
+  kBDSPRoaming,
+};
+
 enum class Shiny {
   //  Random = 0,
   Never = 1,
