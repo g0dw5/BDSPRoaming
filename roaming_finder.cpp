@@ -7,7 +7,7 @@
 #include <vector>
 
 bool RoamingFinder::Step1IsIVLegal() {
-  uint fake_oid = rnd_.NextUInt();
+  uint oid_from_rand = rnd_.NextUInt();
   uint pid = rnd_.NextUInt();
 
   std::vector<int> ivs{kUnsetIV, kUnsetIV, kUnsetIV, kUnsetIV, kUnsetIV, kUnsetIV};
@@ -54,7 +54,7 @@ bool RoamingFinder::Step1IsIVLegal() {
   pkm_.IV_SPE = ivs[5];
 
   // 根据闪的状态修正一下PID
-  uint revised_pid = GetRevisedPID(fake_oid, pid, trainer_);
+  uint revised_pid = GetRevisedPID(oid_from_rand, pid, trainer_);
   pkm_.PID = revised_pid;
   uint oid = GetOID(pkm_.TID, pkm_.SID);
   pkm_.shiny = GetRareType(GetShinyXor(pkm_.PID, oid));
@@ -70,22 +70,19 @@ const PKM &RoamingFinder::Step2GetPokemon() {
   return pkm_;
 }
 
-uint RoamingFinder::GetRevisedPID(uint fake_oid, uint pid, ITrainerID tr) {
-  uint fake_xor = GetShinyXor(pid, fake_oid);
-  uint oid = GetOID(tr.TID, tr.SID);
-  uint real_xor = GetShinyXor(pid, oid);
+uint RoamingFinder::GetRevisedPID(uint oid_from_rand, uint pid, ITrainerID tr) {
+  auto shiny_type_by_rand = GetRareType(GetShinyXor(pid, oid_from_rand));
 
-  auto fake_shiny_type = GetRareType(fake_xor);
-  auto real_shiny_type = GetRareType(real_xor);
+  uint oid = GetOID(tr.TID, tr.SID);
+  auto shiny_type_by_pid = GetRareType(GetShinyXor(pid, oid));
 
   // 推算跟真实一致(都闪或都不闪)
-  if (fake_shiny_type == real_shiny_type)
+  if (shiny_type_by_rand == shiny_type_by_pid)
     return pid;
 
-  bool is_fake_shiny = fake_xor < 16;
-  if (is_fake_shiny) {
+  if (Shiny::Never != shiny_type_by_rand) {
     // 推算闪,真的不闪,通过修改PID使之闪
-    return (((uint) (tr.TID ^ tr.SID) ^ (pid & 0xFFFF) ^ (fake_xor == 0 ? 0u : 1u)) << 16) | (pid & 0xFFFF);
+    return (((uint) (tr.TID ^ tr.SID) ^ (pid & 0xFFFF) ^ (Shiny::AlwaysSquare == shiny_type_by_rand ? 0u : 1u)) << 16) | (pid & 0xFFFF);
   } else {
     // 推算不闪,真的闪,随便找了个方式把PID变不闪
     return pid ^ 0x10000000;

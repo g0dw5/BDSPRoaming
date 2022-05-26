@@ -70,24 +70,21 @@ const PKM &OverworldFinder::Step2GetPokemon() {
 }
 
 uint OverworldFinder::GetRevisedPID(uint pid, ITrainerID tr) {
-  // TODO(wang.song) 跟BDSP游走不同,这里可以设置成任意的闪类型,看看是不是通过加查询参数进行统一化的处理
-  uint fake_xor = 0;
+  // TODO(wang.song) 跟BDSP游走不同,这里可以设置成任意的闪类型,want_shiny_type可设置为入参
+  Shiny shiny_type_by_need = Shiny::AlwaysSquare;
+
   uint oid = GetOID(tr.TID, tr.SID);
-  uint real_xor = GetShinyXor(pid, oid);
+  auto shiny_type_by_pid = GetRareType(GetShinyXor(pid, oid));
 
-  auto fake_shiny_type = GetRareType(fake_xor);
-  auto real_shiny_type = GetRareType(real_xor);
-
-  // 推算跟真实一致(都闪或都不闪)
-  if (fake_shiny_type == real_shiny_type)
+  // 期望跟真实一致(都闪或都不闪)
+  if (shiny_type_by_need == shiny_type_by_pid)
     return pid;
 
-  bool is_fake_shiny = fake_xor < 16;
-  if (is_fake_shiny) {
-    // 推算闪,真的不闪,通过修改PID使之闪
-    return (((uint) (tr.TID ^ tr.SID) ^ (pid & 0xFFFF) ^ (fake_xor == 0 ? 0u : 1u)) << 16) | (pid & 0xFFFF);
+  if (Shiny::Never != shiny_type_by_need) {
+    // 期望闪,真的不闪,通过修改PID使之闪
+    return (((uint) (tr.TID ^ tr.SID) ^ (pid & 0xFFFF) ^ (Shiny::AlwaysSquare == shiny_type_by_need ? 0u : 1u)) << 16) | (pid & 0xFFFF);
   } else {
-    // 推算不闪,真的闪,随便找了个方式把PID变不闪
+    // 期望不闪,真的闪,随便找了个方式把PID变不闪
     return pid ^ 0x10000000;
   }
 }

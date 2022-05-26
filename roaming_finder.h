@@ -40,7 +40,7 @@ class RoamingFinder {
   static constexpr int kUnsetIV = -1;
 
  private:
-  static uint GetRevisedPID(uint fake_oid, uint pid, ITrainerID tr);
+  static uint GetRevisedPID(uint oid_from_rand, uint pid, ITrainerID tr);
   static uint GetOID(int tid, int sid);
   static uint GetShinyXor(uint pid, uint oid);
   static Shiny GetRareType(uint _xor);
