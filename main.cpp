@@ -174,7 +174,7 @@ void FindPokemon(RNDType mode,
       ++over_count;
     }
 
-    static constexpr uint32_t kMaxNotShiny = 32;
+    static constexpr uint32_t kMaxOutput = 32;
     uint32_t output_count{};
     for (const auto &pkm: shiny_pkms) {
       std::cout << std::hex << "Encryption=" << pkm.EncryptionConstant << std::endl;
@@ -186,8 +186,9 @@ void FindPokemon(RNDType mode,
       std::cout << std::endl;
 
       ++output_count;
-      // 不闪的防止打印太多(FIXME:有空加点随机性)
-      if (Shiny::Never == shiny_type_you_want && output_count > kMaxNotShiny) {
+      // 防止打印太多(FIXME:有空加点随机性)
+      if (output_count > kMaxOutput) {
+        std::cout << "总共有" << shiny_pkms.size() << "个结果,只打印了" << kMaxOutput << "条" << std::endl;
         break;
       }
     }
@@ -213,6 +214,28 @@ sArgs g_args;
 std::regex reg("^(0|[1-9][0-9]*|-[1-9][0-9]*)$");
 
 sArgDef g_opt_def[] = {
+    {'m', "mode", must_have::must_n, arg_required,
+     "计算任务模式,有两种取值:bdsp(找游走怪),swsh(找野生怪).默认bdsp",
+     [](char *optarg, void *data, std::string &strErr) {
+       if (nullptr == optarg) {
+         strErr = "缺失参数值";
+         return false;
+       }
+
+       std::string str(optarg);
+       RNDType *type = static_cast<RNDType *>(data);
+       if ("bdsp" == str) {
+         *type = RNDType::kBDSPRoaming;
+         return true;
+       } else if ("swsh" == str) {
+         *type = RNDType::kSWSHOverworld;
+         return true;
+       } else {
+         strErr = "不支持的模式";
+         return false;
+       }
+     },
+     &(g_args.mode)},
     {'s', "sid", must_have::must_y, arg_required,
      "训练家里ID",
      [](char *optarg, void *data, std::string &strErr) {
@@ -222,7 +245,6 @@ sArgDef g_opt_def[] = {
        }
 
        std::string str(optarg);
-       std::regex reg("^(0|[1-9][0-9]*|-[1-9][0-9]*)$");
        if (!std::regex_match(str.begin(), str.end(), reg)) {
          strErr = "SID输入非数字";
          return false;
@@ -275,7 +297,57 @@ sArgDef g_opt_def[] = {
        *pivs = optarg;
        return true;
      },
-     &(g_args.ivs)}};
+     &(g_args.ivs)},
+    {'h', "shiny", must_have::must_n, arg_required,
+     "闪光类型:none/star/square(默认square)",
+     [](char *optarg, void *data, std::string &strErr) {
+       if (nullptr == optarg) {
+         strErr = "缺失参数值";
+         return false;
+       }
+       std::string str(optarg);
+       Shiny *pshiny = static_cast<Shiny *>(data);
+       if ("none" == str) {
+         *pshiny = Shiny::Never;
+         return true;
+       } else if ("star" == str) {
+         *pshiny = Shiny::AlwaysStar;
+         return true;
+       } else if ("square" == str) {
+         *pshiny = Shiny::AlwaysSquare;
+         return true;
+       } else {
+         strErr = "不支持的闪光类型";
+         return false;
+       }
+     },
+     &(g_args.shiny_type_you_want)},
+    {'f', "flawless", must_have::must_n, arg_required,
+     "游戏中抓到时至少的完美数(bdsp游走一定是3,swsh好像有0有3)",
+     [](char *optarg, void *data, std::string &strErr) {
+       if (nullptr == optarg) {
+         strErr = "缺失参数值";
+         return false;
+       }
+
+       std::string str(optarg);
+       if (!std::regex_match(str.begin(), str.end(), reg)) {
+         strErr = "flawless输入非数字";
+         return false;
+       }
+
+       int flawless_count = std::stoi(optarg);
+       if (flawless_count < 0 || flawless_count > 6) {
+         strErr = "flawless需要在[0,6]之间";
+         return false;
+       }
+
+       int *pflawless = static_cast<int *>(data);
+       *pflawless = flawless_count;
+       return true;
+     },
+     &(g_args.flawless_count)},
+};
 
 int main(int argc, char *argv[]) {
   if (!parse_cmd_args(argc, argv, g_opt_def,
@@ -303,8 +375,9 @@ int main(int argc, char *argv[]) {
   // 其实seed确定了，IV就确定了，是不是闪，是什么闪就确定了
   // 换句话说，所有玩这个游戏的，游走怪只要是同样的IV，seed100%一样
   // 就可以缓存所有高需求的seed，只对这些seed重新算下pid就行了
+  // key的末尾再下划线连上一个flawless_count
   std::unordered_map<std::string, std::unordered_set<uint>> precalculated_bdsp_ivs_to_seed{
-      {"31,31,31,31,31,31",
+      {"31,31,31,31,31,31_3",
        {0x60d489e, 0xf962809, 0x1707a1bc, 0x256512ac,
         0x2b2e0bc5, 0x3e9e0489, 0x429f7bdd, 0x4fcd2b6c,
         0x5ce9aa13, 0x65aded09, 0x6707f338, 0x6b72fe4d,
@@ -313,16 +386,16 @@ int main(int argc, char *argv[]) {
         0xa01f78d8, 0xafecaffc, 0xb2b8db34, 0xc057809e,
         0xc21a8fb4, 0xcab3bc4d, 0xd970b3b2, 0xe6da6290,
         0xebf047c3, 0xf489a30c, 0xf6cf4c3b, 0xff2be493}},
-      {"31,0,31,31,31,0",
+      {"31,0,31,31,31,0_3",
        {0x21bbd6a, 0x630fbe9f, 0x6a84b6ed, 0x6c6d3a44,
         0x745e444f, 0xc9080389, 0xc937601d, 0xce11bee0}},
-      {"31,0,31,31,31,31",
+      {"31,0,31,31,31,31_3",
        {0xbd5a6b6, 0x1434d7a3, 0x14a4e19d, 0x16356604,
         0x258ffeb3, 0x2811e041, 0x2fbfee90, 0x4318207a,
         0x57003093, 0x6ea9022c, 0x7d5b6f50, 0x86e81468,
         0x8b2bc094, 0x91c150eb, 0x93c2fef8, 0x96e4f3e9,
         0xa3fde2ad, 0xdc52ec02, 0xdd32dc34, 0xfaea4706}},
-      {"31,31,31,31,31,0",
+      {"31,31,31,31,31,0_3",
        {0x6f865f2, 0x1eeb4ab9, 0x22c848cd, 0x2fbdd191,
         0x3d0b17be, 0x51097301, 0x558e91a4, 0x5f051ba8,
         0x61afeb5f, 0x6be08d41, 0x6e87f93c, 0x77252c8c,
@@ -330,6 +403,7 @@ int main(int argc, char *argv[]) {
         0xd013ae00, 0xd6fc7ddd}},
   };
 
+  std::string query_key = g_args.ivs + "_" + std::to_string(g_args.flawless_count);
   std::unordered_set<uint> seed_white_list;
   switch (g_args.mode) {
     case RNDType::kSWSHOverworld: {
@@ -337,7 +411,7 @@ int main(int argc, char *argv[]) {
     }
     case RNDType::kBDSPRoaming: {
       // 找不到加一个就加一个了
-      seed_white_list = precalculated_bdsp_ivs_to_seed[g_args.ivs];
+      seed_white_list = precalculated_bdsp_ivs_to_seed[query_key];
       break;
     }
   }
