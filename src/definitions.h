@@ -56,6 +56,7 @@ struct IVs
 class PKM : public ITrainerID, public IVs
 {
  public:
+  uint seed{};
   uint EncryptionConstant{};
 
   uint PID{};

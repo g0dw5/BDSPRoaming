@@ -22,6 +22,7 @@ class IRNGPokemonFinder
   {
     pkm_.SID = trainer.SID;
     pkm_.TID = trainer.TID;
+    pkm_.seed = seed_;
   }
   virtual ~IRNGPokemonFinder() = default;
 

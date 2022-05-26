@@ -203,6 +203,7 @@ void FindPokemon(RNDType mode, int sid, int tid, int hp, int atk, int def,
         uint32_t output_count{};
         for (const auto& pkm : shiny_pkms)
         {
+          std::cout << std::hex << "Seed=" << pkm.seed << std::endl;
           std::cout << std::hex << "Encryption=" << pkm.EncryptionConstant
                     << std::endl;
           std::cout << std::hex << "PID=" << pkm.PID << std::endl;
@@ -483,7 +484,7 @@ int main(int argc, char* argv[])
     case RNDType::kSWSHOverworld:
     {
       // 找不到加一个就加一个了
-      seed_white_list = precalculated_bdsp_ivs_to_seed[query_key];
+      seed_white_list = precalculated_swsh_ivs_to_seed[query_key];
       break;
     }
     case RNDType::kBDSPRoaming:
