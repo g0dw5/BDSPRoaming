@@ -373,9 +373,19 @@ int main(int argc, char *argv[]) {
   }
 
   // 其实seed确定了，IV就确定了，是不是闪，是什么闪就确定了
-  // 换句话说，所有玩这个游戏的，游走怪只要是同样的IV，seed100%一样
+  // 换句话说，所有玩这个游戏的，只要是同样的IV，seed100%一样
   // 就可以缓存所有高需求的seed，只对这些seed重新算下pid就行了
   // key的末尾再下划线连上一个flawless_count
+  std::unordered_map<std::string, std::unordered_set<uint>> precalculated_swsh_ivs_to_seed{
+      {"31,31,31,31,31,0_0",
+       {0x857fa070}},
+      {"31,0,31,31,31,31_0",
+       {0x44e87f35, 0x4dd86a64, 0x54676db9, 0xe7cf1d3c,
+        0xf7400fb0, 0xfe701ae1}},
+      {"31,0,31,31,31,0_0",
+       {0xddf01ac6, 0xd2b74a56, 0xc44f1d1b, 0x7ed778cf,
+        0x200da840}},
+  };
   std::unordered_map<std::string, std::unordered_set<uint>> precalculated_bdsp_ivs_to_seed{
       {"31,31,31,31,31,31_3",
        {0x60d489e, 0xf962809, 0x1707a1bc, 0x256512ac,
@@ -407,6 +417,8 @@ int main(int argc, char *argv[]) {
   std::unordered_set<uint> seed_white_list;
   switch (g_args.mode) {
     case RNDType::kSWSHOverworld: {
+      // 找不到加一个就加一个了
+      seed_white_list = precalculated_bdsp_ivs_to_seed[query_key];
       break;
     }
     case RNDType::kBDSPRoaming: {
