@@ -4,14 +4,21 @@
 #include <functional>
 #include <string>
 
-namespace OpUtils {
+namespace OpUtils
+{
 
-typedef enum { arg_none = 0,
-               arg_required = 1,
-               arg_optional = 2 } arg_status;
+typedef enum
+{
+  arg_none = 0,
+  arg_required = 1,
+  arg_optional = 2
+} arg_status;
 
-enum class must_have { must_y,
-                       must_n };
+enum class must_have
+{
+  must_y,
+  must_n
+};
 
 /** \brief          parse one arg
  * \param first     arg value in c-style string
@@ -20,19 +27,20 @@ enum class must_have { must_y,
  * \param third     error message if parse faild,will print out
  * \return          true:ok false:ng
  */
-typedef std::function<bool(char *, void *, std::string &strErr)> FnArgParse;
+typedef std::function<bool(char*, void*, std::string& strErr)> FnArgParse;
 
-struct sArgDef {
+struct sArgDef
+{
   char name_short;
-  const char *name_long;
+  const char* name_long;
   must_have must;
   arg_status has_arg;
-  const char *msg_help;
+  const char* msg_help;
   FnArgParse fn_parse;
-  void *data;
+  void* data;
 };
 
-bool parse_cmd_args(int argc, char *argv[], sArgDef *pDef, int size);
-}// namespace OpUtils
+bool parse_cmd_args(int argc, char* argv[], sArgDef* pDef, int size);
+}  // namespace OpUtils
 
-#endif//__OPUTILS_ARG_H__
+#endif  //__OPUTILS_ARG_H__

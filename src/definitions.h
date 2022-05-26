@@ -11,12 +11,14 @@
 using uint = uint32_t;
 using ulong = unsigned long;
 
-enum class RNDType {
+enum class RNDType
+{
   kSWSHOverworld,
   kBDSPRoaming,
 };
 
-enum class Shiny {
+enum class Shiny
+{
   //  Random = 0,
   Never = 1,
   //  Always = 2,
@@ -25,20 +27,27 @@ enum class Shiny {
   //  FixedValue = 5,
 };
 
-static std::string GetShinyType(Shiny shiny) {
-  switch (shiny) {
-    case Shiny::Never: return "None";
-    case Shiny::AlwaysStar: return "Star";
-    case Shiny::AlwaysSquare: return "Square";
+static std::string GetShinyType(Shiny shiny)
+{
+  switch (shiny)
+  {
+    case Shiny::Never:
+      return "None";
+    case Shiny::AlwaysStar:
+      return "Star";
+    case Shiny::AlwaysSquare:
+      return "Square";
   }
 }
 
-struct ITrainerID {
+struct ITrainerID
+{
   int SID{};
   int TID{};
 };
 
-struct IVs {
+struct IVs
+{
   uint IV_HP{};
   uint IV_ATK{};
   uint IV_DEF{};
@@ -47,7 +56,8 @@ struct IVs {
   uint IV_SPE{};
 };
 
-class PKM : public ITrainerID, public IVs {
+class PKM : public ITrainerID, public IVs
+{
  public:
   uint EncryptionConstant{};
 
@@ -60,17 +70,17 @@ class PKM : public ITrainerID, public IVs {
   Shiny shiny{Shiny::Never};
 };
 
-class ShinyUtil {
+class ShinyUtil
+{
  public:
-  static uint GetTidSid(int tid, int sid) {
-    return (sid << 16) | tid;
-  }
+  static uint GetTidSid(int tid, int sid) { return (sid << 16) | tid; }
 
   static uint GetShinyXor(uint val) { return (val >> 16) ^ (val & 0xFFFF); }
 
   static uint GetShinyValue(uint num) { return GetShinyXor(num) >> 4; }
 
-  static Shiny GetShinyType(uint pid, uint tidsid) {
+  static Shiny GetShinyType(uint pid, uint tidsid)
+  {
     uint p = GetShinyXor(pid);
     uint t = GetShinyXor(tidsid);
     if (p == t)
@@ -81,4 +91,4 @@ class ShinyUtil {
   }
 };
 
-#endif//ROAMINGID__DEFINITIONS_H_
+#endif  // ROAMINGID__DEFINITIONS_H_

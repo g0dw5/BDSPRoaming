@@ -7,14 +7,17 @@
 
 #include "definitions.h"
 
-class IRNGPokemonFinder {
+class IRNGPokemonFinder
+{
  public:
-  IRNGPokemonFinder(
-      const ITrainerID &trainer,
-      const IVs &ivs, uint seed,
-      Shiny shiny_type_you_want,
-      int flawless_count)
-      : trainer_(trainer), expect_ivs_(ivs), seed_(seed), shiny_type_you_want_(shiny_type_you_want), flawless_count_(flawless_count) {
+  IRNGPokemonFinder(const ITrainerID& trainer, const IVs& ivs, uint seed,
+                    Shiny shiny_type_you_want, int flawless_count)
+      : trainer_(trainer),
+        expect_ivs_(ivs),
+        seed_(seed),
+        shiny_type_you_want_(shiny_type_you_want),
+        flawless_count_(flawless_count)
+  {
     pkm_.SID = trainer.SID;
     pkm_.TID = trainer.TID;
   }
@@ -24,32 +27,37 @@ class IRNGPokemonFinder {
   // 验证IV/闪是否符合条件,生成完EC/PID
   virtual bool Step1IsSatisfied() = 0;
   // 补完信息
-  virtual const PKM &Step2GetPokemon() = 0;
+  virtual const PKM& Step2GetPokemon() = 0;
 
  public:
-  static uint GetOID(int tid, int sid) {
-    return (uint) ((sid << 16) | tid);
-  }
+  static uint GetOID(int tid, int sid) { return (uint)((sid << 16) | tid); }
 
-  static uint GetShinyXor(uint pid, uint oid) {
+  static uint GetShinyXor(uint pid, uint oid)
+  {
     uint _xor = pid ^ oid;
     return (_xor ^ (_xor >> 16)) & 0xFFFF;
   }
 
-  static Shiny GetRareType(uint _xor) {
-    if (_xor == 0) {
+  static Shiny GetRareType(uint _xor)
+  {
+    if (_xor == 0)
+    {
       return Shiny::AlwaysSquare;
-    } else if (_xor < 16) {
+    }
+    else if (_xor < 16)
+    {
       return Shiny::AlwaysStar;
-    } else {
+    }
+    else
+    {
       return Shiny::Never;
     }
   }
 
  protected:
   uint seed_{};
-  const ITrainerID &trainer_;
-  const IVs &expect_ivs_;
+  const ITrainerID& trainer_;
+  const IVs& expect_ivs_;
   const int flawless_count_;
   const Shiny shiny_type_you_want_;
 
@@ -59,9 +67,12 @@ class IRNGPokemonFinder {
   static constexpr int kUnsetIV = -1;
 };
 
-class RNGPokemonFinderFactory {
+class RNGPokemonFinderFactory
+{
  public:
-  static std::unique_ptr<IRNGPokemonFinder> CreateFinder(RNDType type, const ITrainerID &trainer, const IVs &ivs, uint seed, Shiny shiny_type_you_want, int flawless_count);
+  static std::unique_ptr<IRNGPokemonFinder> CreateFinder(
+      RNDType type, const ITrainerID& trainer, const IVs& ivs, uint seed,
+      Shiny shiny_type_you_want, int flawless_count);
 };
 
-#endif//ROAMINGID__RNG_POKEMON_FINDER_H_
+#endif  // ROAMINGID__RNG_POKEMON_FINDER_H_

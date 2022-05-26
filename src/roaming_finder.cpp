@@ -6,7 +6,8 @@
 
 #include <vector>
 
-bool RoamingFinder::Step1IsSatisfied() {
+bool RoamingFinder::Step1IsSatisfied()
+{
   pkm_.EncryptionConstant = seed_;
 
   uint oid_from_rand = rnd_.NextUInt();
@@ -21,29 +22,33 @@ bool RoamingFinder::Step1IsSatisfied() {
   if (shiny_type_you_want_ != pkm_.shiny)
     return false;
 
-  std::vector<int> ivs{kUnsetIV, kUnsetIV, kUnsetIV, kUnsetIV, kUnsetIV, kUnsetIV};
+  std::vector<int> ivs{kUnsetIV, kUnsetIV, kUnsetIV,
+                       kUnsetIV, kUnsetIV, kUnsetIV};
 
   // 用完美个数取index,剩下的随机个体值
   int determined = 0;
-  while (determined < flawless_count_) {
-    int idx = (int) rnd_.NextUInt(6);
+  while (determined < flawless_count_)
+  {
+    int idx = (int)rnd_.NextUInt(6);
     if (ivs[idx] != kUnsetIV)
       continue;
 
     ivs[idx] = kFlawlessValue;
 
-    uint expect_value = *((uint *) (&expect_ivs_) + idx);
+    uint expect_value = *((uint*)(&expect_ivs_) + idx);
     if (ivs[idx] != expect_value)
       return false;
 
     ++determined;
   }
 
-  for (int idx = 0; idx < ivs.size(); ++idx) {
-    if (ivs[idx] == kUnsetIV) {
-      ivs[idx] = (int) rnd_.NextUInt(kFlawlessValue + 1);
+  for (int idx = 0; idx < ivs.size(); ++idx)
+  {
+    if (ivs[idx] == kUnsetIV)
+    {
+      ivs[idx] = (int)rnd_.NextUInt(kFlawlessValue + 1);
 
-      uint expect_value = *((uint *) (&expect_ivs_) + idx);
+      uint expect_value = *((uint*)(&expect_ivs_) + idx);
       if (ivs[idx] != expect_value)
         return false;
     }
@@ -67,15 +72,19 @@ bool RoamingFinder::Step1IsSatisfied() {
   return true;
 }
 
-const PKM &RoamingFinder::Step2GetPokemon() {
-  pkm_.AbilityNumber = (1 << (int) rnd_.NextUInt(2));
-  pkm_.HeightScalar = (unsigned char) ((int) rnd_.NextUInt(0x81) + (int) rnd_.NextUInt(0x80));
-  pkm_.WeightScalar = (unsigned char) ((int) rnd_.NextUInt(0x81) + (int) rnd_.NextUInt(0x80));
+const PKM& RoamingFinder::Step2GetPokemon()
+{
+  pkm_.AbilityNumber = (1 << (int)rnd_.NextUInt(2));
+  pkm_.HeightScalar =
+      (unsigned char)((int)rnd_.NextUInt(0x81) + (int)rnd_.NextUInt(0x80));
+  pkm_.WeightScalar =
+      (unsigned char)((int)rnd_.NextUInt(0x81) + (int)rnd_.NextUInt(0x80));
 
   return pkm_;
 }
 
-uint RoamingFinder::GetRevisedPID(uint oid_from_rand, uint pid, ITrainerID tr) {
+uint RoamingFinder::GetRevisedPID(uint oid_from_rand, uint pid, ITrainerID tr)
+{
   auto shiny_type_by_rand = GetRareType(GetShinyXor(pid, oid_from_rand));
 
   uint oid = GetOID(tr.TID, tr.SID);
@@ -85,10 +94,16 @@ uint RoamingFinder::GetRevisedPID(uint oid_from_rand, uint pid, ITrainerID tr) {
   if (shiny_type_by_rand == shiny_type_by_pid)
     return pid;
 
-  if (Shiny::Never != shiny_type_by_rand) {
+  if (Shiny::Never != shiny_type_by_rand)
+  {
     // 推算闪,真的不闪,通过修改PID使之闪
-    return (((uint) (tr.TID ^ tr.SID) ^ (pid & 0xFFFF) ^ (Shiny::AlwaysSquare == shiny_type_by_rand ? 0u : 1u)) << 16) | (pid & 0xFFFF);
-  } else {
+    return (((uint)(tr.TID ^ tr.SID) ^ (pid & 0xFFFF) ^
+             (Shiny::AlwaysSquare == shiny_type_by_rand ? 0u : 1u))
+            << 16) |
+           (pid & 0xFFFF);
+  }
+  else
+  {
     // 推算不闪,真的闪,随便找了个方式把PID变不闪
     return pid ^ 0x10000000;
   }
