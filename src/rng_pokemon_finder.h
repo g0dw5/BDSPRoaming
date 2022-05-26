@@ -5,6 +5,8 @@
 #ifndef ROAMINGID__RNG_POKEMON_FINDER_H_
 #define ROAMINGID__RNG_POKEMON_FINDER_H_
 
+#include <memory>
+
 #include "definitions.h"
 
 class IRNGPokemonFinder
