@@ -127,9 +127,9 @@ void FindRoamingPokemon(int sid, int tid, int hp, int atk, int def, int spa, int
   expect_ivs.IV_SPD = SPD;
   expect_ivs.IV_SPE = SPE;
 
-  uint end_seed = 0x80000000;
+  ulong end_seed = 0x100000000L;
   uint batch_count = thread_count * 256;
-  uint seed_count_in_each_batch = end_seed / batch_count;
+  ulong seed_count_in_each_batch = end_seed / batch_count;
 
   using PKMs = std::vector<PKM>;
   using Futures = std::list<std::future<PKMs>>;
@@ -140,8 +140,8 @@ void FindRoamingPokemon(int sid, int tid, int hp, int atk, int def, int spa, int
 
   std::thread t([&]() {
     for (uint batch = 0; batch < batch_count; ++batch) {
-      uint e_beg = seed_count_in_each_batch * (batch);
-      uint e_end = seed_count_in_each_batch * (batch + 1);
+      ulong e_beg = seed_count_in_each_batch * (batch);
+      ulong e_end = seed_count_in_each_batch * (batch + 1);
 
       if (batch == batch_count - 1)
         e_end = end_seed;
@@ -149,7 +149,7 @@ void FindRoamingPokemon(int sid, int tid, int hp, int atk, int def, int spa, int
       futures.emplace_back(pool.enqueue([e_beg, e_end, &trainer, &expect_ivs, &seed_white_list] {
         PKMs pkms;
 
-        for (uint e = e_beg; e < e_end; ++e) {
+        for (ulong e = e_beg; e < e_end; ++e) {
           if (!seed_white_list.empty() && !seed_white_list.count(e))
             continue;
 
