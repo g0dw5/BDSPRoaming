@@ -11,6 +11,16 @@ bool OverworldFinder::Step1IsSatisfied()
   pkm_.EncryptionConstant = rnd_.NextInt();
   uint pid = rnd_.NextInt();
 
+  // 根据闪的状态修正一下PID
+  uint revised_pid = GetRevisedPID(pid, trainer_);
+  pkm_.PID = revised_pid;
+
+  uint oid = GetOID(pkm_.TID, pkm_.SID);
+  pkm_.shiny = GetShinyType(GetShinyXor(pkm_.PID, oid));
+
+  if (shiny_type_you_want_ != pkm_.shiny)
+    return false;
+
   std::vector<int> ivs{kUnsetIV, kUnsetIV, kUnsetIV,
                        kUnsetIV, kUnsetIV, kUnsetIV};
 
@@ -58,12 +68,6 @@ bool OverworldFinder::Step1IsSatisfied()
   pkm_.IV_SPD = ivs[4];
   pkm_.IV_SPE = ivs[5];
 
-  // 根据闪的状态修正一下PID
-  uint revised_pid = GetRevisedPID(pid, trainer_);
-  pkm_.PID = revised_pid;
-  uint oid = GetOID(pkm_.TID, pkm_.SID);
-  pkm_.shiny = GetShinyType(GetShinyXor(pkm_.PID, oid));
-
   return true;
 }
 
@@ -93,7 +97,9 @@ uint OverworldFinder::GetRevisedPID(uint pid, ITrainerID tr)
   if (Shiny::kNone != shiny_type_by_need)
   {
     // 期望闪,真的不闪,通过修改PID使之闪
-    return MakeShinyPID(tr.SID, tr.TID, pid, shiny_type_by_need);
+    // 剑盾星闪有bug,所有强制改闪的都改成了方块闪
+    // 原因见:https://twitter.com/SciresM/status/1197039032112304128
+    return MakeShinyPID(tr.SID, tr.TID, pid, Shiny::kSquare);
   }
   else
   {

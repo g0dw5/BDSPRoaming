@@ -411,6 +411,30 @@ sArgDef g_opt_def[] = {
      &(g_args.flawless_count)},
 };
 
+void FindTrainersByOriginalPID()
+{
+  // 如果你知道了通过RNG算出来的PID，可以通过这个PID找与它天作之合的训练家
+  uint32_t pid = 0xA1AD9F75;
+  uint32_t count{};
+  for (uint64_t long_id = 0; long_id < 4295000000; ++long_id)
+  {
+    uint32_t sid = long_id / 1000000;
+    uint32_t tid = long_id % 1000000;
+
+    Shiny type = ShinyUtil::GetShinyType(pid, ShinyUtil::GetTidSid(tid, sid));
+    if (Shiny::kStar == type)
+    {
+      ++count;
+      if (tid == 210519)
+      {
+        std::cout << "sid=" << sid << std::endl;
+        std::cout << "tid=" << tid << std::endl;
+      }
+    }
+  }
+  std::cout << "找到" << count << "位幸运训练家" << std::endl;
+}
+
 int main(int argc, char* argv[])
 {
   if (!parse_cmd_args(argc, argv, g_opt_def,
@@ -436,6 +460,21 @@ int main(int argc, char* argv[])
   {
     printf("个体值不是6个\n");
     return 2;
+  }
+
+  if (RNDType::kSWSHOverworld == g_args.mode &&
+      Shiny::kStar == g_args.shiny_type_you_want)
+  {
+    // clang-format off
+    fprintf(stderr, "剑盾星闪有bug,高IV自ID很看脸(1/4369),原因见:https://twitter.com/SciresM/status/1197039032112304128\n");
+    // clang-format on
+  }
+
+  if (RNDType::kBDSPRoaming == g_args.mode && 3 != g_args.flawless_count)
+  {
+    // clang-format off
+    fprintf(stderr, "珍钻复刻游走怪就2只,都是至少3V,flawless建议重填下\n");
+    // clang-format on
   }
 
   // 其实seed确定了，IV就确定了，是不是闪，是什么闪就确定了
