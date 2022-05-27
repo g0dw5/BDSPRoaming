@@ -83,8 +83,6 @@ const PKM& OverworldFinder::Step2GetPokemon()
 
 uint OverworldFinder::GetRevisedPID(uint pid, ITrainerID tr)
 {
-  // TODO(wang.song)
-  // 跟BDSP游走不同,这里可以设置成任意的闪类型,want_shiny_type可设置为入参
   Shiny shiny_type_by_need = shiny_type_you_want_;
 
   uint oid = GetOID(tr.TID, tr.SID);
@@ -94,16 +92,17 @@ uint OverworldFinder::GetRevisedPID(uint pid, ITrainerID tr)
   if (shiny_type_by_need == shiny_type_by_pid)
     return pid;
 
-  if (Shiny::kNone != shiny_type_by_need)
+  switch (shiny_type_by_need)
   {
-    // 期望闪,真的不闪,通过修改PID使之闪
-    // 剑盾星闪有bug,所有强制改闪的都改成了方块闪
-    // 原因见:https://twitter.com/SciresM/status/1197039032112304128
-    return MakeShinyPID(tr.SID, tr.TID, pid, Shiny::kSquare);
-  }
-  else
-  {
-    // 期望不闪,真的闪,随便找了个方式把PID变不闪
-    return pid ^ 0x10000000;
+    case Shiny::kNone:
+      // 期望不闪,真的闪,随便找了个方式把PID变不闪
+      return pid ^ 0x10000000;
+    case Shiny::kStar:
+      // 期望星闪,真的不闪,没用,改了也不行
+      // 原因见:https://twitter.com/SciresM/status/1197039032112304128
+      return pid;
+    case Shiny::kSquare:
+      // 期望闪,真的不闪,通过修改PID使之闪
+      return MakeShinyPID(tr.SID, tr.TID, pid, shiny_type_by_need);
   }
 }
