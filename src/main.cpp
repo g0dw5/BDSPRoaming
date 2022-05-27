@@ -28,6 +28,7 @@ class CmdProgress : public IProgress
   {
     sprintf(m_szFormat, "%%3.0%df", m_precision);
     m_pszPercent = (char*)calloc(m_szPercentLen, sizeof(char));
+    tb_ = std::chrono::high_resolution_clock::now();
   }
 
   ~CmdProgress()
@@ -67,14 +68,17 @@ class CmdProgress : public IProgress
 
   virtual void ProgOver(bool bSuccess, const char* pszInfo)
   {
+    auto te = std::chrono::high_resolution_clock::now();
+    int duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(te - tb_).count();
     m_bSuccess = bSuccess;
     if (bSuccess)
     {
-      printf("\n处理成功\n");
+      printf("\n处理成功,耗时%.03f秒.\n", duration / 1000.0);
     }
     else
     {
-      printf("\n处理失败：%s\n", pszInfo);
+      printf("\n处理失败,耗时%.03f秒.(%s)\n", duration / 1000.0, pszInfo);
     }
     if (nullptr != pszInfo)
     {
@@ -104,6 +108,8 @@ class CmdProgress : public IProgress
   char m_szFormat[7];
   uint32_t m_szPercentLen = 4 + m_precision + 1;
   char* m_pszPercent = nullptr;
+
+  decltype(std::chrono::high_resolution_clock::now()) tb_;
 };
 
 void FindPokemon(RNDType mode, int sid, int tid, int hp, int atk, int def,
@@ -148,6 +154,8 @@ void FindPokemon(RNDType mode, int sid, int tid, int hp, int atk, int def,
   Futures futures;
   CmdProgress prog;
 
+  PKMs result_pkms;
+
   std::thread t(
       [&]()
       {
@@ -184,46 +192,17 @@ void FindPokemon(RNDType mode, int sid, int tid, int hp, int atk, int def,
               }));
         }
 
-        PKMs shiny_pkms;
-
         uint32_t over_count{};
         for (auto& f : futures)
         {
           auto pkms = f.get();
           for (const auto& pkm : pkms)
           {
-            shiny_pkms.push_back(pkm);
+            result_pkms.push_back(pkm);
           }
 
           prog.Progress(double(over_count + 1) / batch_count, nullptr);
           ++over_count;
-        }
-
-        static constexpr uint32_t kMaxOutput = 32;
-        uint32_t output_count{};
-        for (const auto& pkm : shiny_pkms)
-        {
-          std::cout << std::hex << "Seed=" << pkm.seed << std::endl;
-          std::cout << std::hex << "Encryption=" << pkm.EncryptionConstant
-                    << std::endl;
-          std::cout << std::hex << "PID=" << pkm.PID << std::endl;
-          std::cout << std::dec << "AbilityIndex=" << pkm.AbilityNumber
-                    << std::endl;
-          std::cout << std::dec << "HeightScalar=" << pkm.HeightScalar
-                    << std::endl;
-          std::cout << std::dec << "WeightScalar=" << pkm.WeightScalar
-                    << std::endl;
-          std::cout << "ShinyType=" << GetShinyType(pkm.shiny) << std::endl;
-          std::cout << std::endl;
-
-          ++output_count;
-          // 防止打印太多(FIXME:有空加点随机性)
-          if (output_count > kMaxOutput)
-          {
-            std::cout << "总共有" << shiny_pkms.size() << "个结果,只打印了"
-                      << kMaxOutput << "条" << std::endl;
-            break;
-          }
         }
 
         prog.ProgOver(true, nullptr);
@@ -231,6 +210,30 @@ void FindPokemon(RNDType mode, int sid, int tid, int hp, int atk, int def,
   t.detach();
 
   prog.wait();
+
+  static constexpr uint32_t kMaxOutput = 32;
+  uint32_t output_count{};
+  for (const auto& pkm : result_pkms)
+  {
+    std::cout << std::hex << "Seed=" << pkm.seed << std::endl;
+    std::cout << std::hex << "Encryption=" << pkm.EncryptionConstant
+              << std::endl;
+    std::cout << std::hex << "PID=" << pkm.PID << std::endl;
+    std::cout << std::dec << "AbilityIndex=" << pkm.AbilityNumber << std::endl;
+    std::cout << std::dec << "HeightScalar=" << pkm.HeightScalar << std::endl;
+    std::cout << std::dec << "WeightScalar=" << pkm.WeightScalar << std::endl;
+    std::cout << "ShinyType=" << GetShinyType(pkm.shiny) << std::endl;
+    std::cout << std::endl;
+
+    ++output_count;
+    // 防止打印太多(FIXME:有空加点随机性)
+    if (output_count > kMaxOutput)
+    {
+      std::cout << "总共有" << result_pkms.size() << "个结果,只打印了"
+                << kMaxOutput << "条" << std::endl;
+      break;
+    }
+  }
 }
 
 struct sArgs
