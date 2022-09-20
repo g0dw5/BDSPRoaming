@@ -8,6 +8,7 @@
 
 #include "rng_pokemon_finder.h"
 
+#include "G3RNG.h"
 #include "arg_op.h"
 #include "thread_pool.h"
 
@@ -438,8 +439,289 @@ void FindTrainersByOriginalPID()
   std::cout << "找到" << count << "位幸运训练家" << std::endl;
 }
 
+std::vector<uint> GetSeedsFromPID(uint a, uint b)
+{
+  uint second = a << 16;
+  uint first = b << 16;
+  return lcrng.RecoverLower16Bits(first, second);
+}
+std::vector<uint> GetSeedsFromPIDSkip(uint a, uint b)
+{
+  uint third = a << 16;
+  uint first = b << 16;
+  return lcrng.RecoverLower16BitsGap(first, third);
+}
+
+uint GetIVChunk(IVs ivs, int start)
+{
+  uint val = 0;
+  for (int i = 0; i < 3; i++)
+    val |= ivs[i + start] << (5 * i);
+  return val;
+}
+
+void GetIVsInt32(uint r1, uint r2, IVs& ivs)
+{
+  // IV的排序
+  //  IV_HP = value[0];
+  //  IV_ATK = value[1];
+  //  IV_DEF = value[2];
+  //  IV_SPE = value[3];
+  //  IV_SPA = value[4];
+  //  IV_SPD = value[5];
+
+  // SPD
+  ivs.IV_SPD = (int)r2 >> 10 & 31;
+  // SPA
+  ivs.IV_SPA = (int)r2 >> 5 & 31;
+  // SPE
+  ivs.IV_SPE = (int)r2 & 31;
+  // DEF
+  ivs.IV_DEF = (int)r1 >> 10 & 31;
+  // ATK
+  ivs.IV_ATK = (int)r1 >> 5 & 31;
+  // HP
+  ivs.IV_HP = (int)r1 & 31;
+}
+
+void GeneratePIDIVs(PIDType type, uint seed, uint& pid, IVs& ivs,
+                    Nature& nature)
+{
+  const auto& rng = lcrng;
+
+  auto A = rng.Next(seed);
+  auto B = rng.Next(A);
+
+  bool skipBetweenPID =
+      type == PIDType::Method_3 or type == PIDType::Method_3_Unown;
+  if (skipBetweenPID)  // VBlank skip between PID rand() [RARE]
+    B = rng.Next(B);
+
+  bool swappedPIDHalves =
+      type >= PIDType::Method_1_Unown and type <= PIDType::Method_4_Unown;
+  if (swappedPIDHalves)  // switched order of PID halves, "BA.."
+    pid = (A & 0xFFFF0000) | B >> 16;
+  else
+    pid = (B & 0xFFFF0000) | A >> 16;
+  nature = static_cast<Nature>(pid % 25);
+
+  auto C = rng.Next(B);
+  bool skipIV1Frame =
+      type == PIDType::Method_2 or type == PIDType::Method_2_Unown;
+  if (skipIV1Frame)  // VBlank skip after PID
+    C = rng.Next(C);
+
+  auto D = rng.Next(C);
+  bool skipIV2Frame =
+      type == PIDType::Method_4 or type == PIDType::Method_4_Unown;
+  if (skipIV2Frame)  // VBlank skip between IVs
+    D = rng.Next(D);
+
+  GetIVsInt32(C >> 16, D >> 16, ivs);
+  if (type == PIDType::Method_1_Roamer)
+  {
+    // Only store lowest 8 bits of IV data; zero out the other bits.
+    ivs.Set(1, ivs[1] & 7);
+    for (int i = 2; i < 6; i++)
+      ivs.Set(i, 0);
+  }
+}
+
+bool GetLCRNGMatch(uint top, uint bot, IVs ivs, IVs& pidiv)
+{
+  // TODO(wang.song) return?
+  uint new_pid;
+  Nature nature;
+
+  auto reg = GetSeedsFromPID(top, bot);
+  auto iv1 = GetIVChunk(ivs, 0);
+  auto iv2 = GetIVChunk(ivs, 3);
+  for (auto seed : reg)
+  {
+    // A and B are already used by PID
+    auto B = lcrng.Advance(seed, 2);
+
+    // Method 1/2/4 can use 3 different RNG frames
+    auto C = lcrng.Next(B);
+    auto ivC = C >> 16 & 0x7FFF;
+    if (iv1 == ivC)
+    {
+      auto D = lcrng.Next(C);
+      auto ivD = D >> 16 & 0x7FFF;
+      if (iv2 == ivD)  // ABCD
+      {
+        GeneratePIDIVs(PIDType::Method_1, seed, new_pid, pidiv, nature);
+        return true;
+      }
+
+      auto E = lcrng.Next(D);
+      auto ivE = E >> 16 & 0x7FFF;
+      if (iv2 == ivE)  // ABCE
+      {
+        GeneratePIDIVs(PIDType::Method_4, seed, new_pid, pidiv, nature);
+        return true;
+      }
+    }
+    else
+    {
+      auto D = lcrng.Next(C);
+      auto ivD = D >> 16 & 0x7FFF;
+      if (iv1 != ivD)
+        continue;
+
+      auto E = lcrng.Next(D);
+      auto ivE = E >> 16 & 0x7FFF;
+      if (iv2 == ivE)  // ABDE
+      {
+        GeneratePIDIVs(PIDType::Method_2, seed, new_pid, pidiv, nature);
+        return true;
+      }
+    }
+  }
+  reg = GetSeedsFromPIDSkip(top, bot);
+  for (auto seed : reg)
+  {
+    // A and B are already used by PID
+    auto C = lcrng.Advance(seed, 3);
+
+    // Method 3
+    auto D = lcrng.Next(C);
+    auto ivD = D >> 16 & 0x7FFF;
+    if (iv1 != ivD)
+      continue;
+    auto E = lcrng.Next(D);
+    auto ivE = E >> 16 & 0x7FFF;
+    if (iv2 != ivE)
+      continue;
+    GeneratePIDIVs(PIDType::Method_3, seed, new_pid, pidiv, nature);
+    return true;
+  }
+
+  return false;
+}
+
+void find_pid(uint tid, uint sid, uint& pid)
+{
+  uint tsv = (sid ^ tid) >> 3;
+
+  ulong PID = 0;
+  uint count{};
+  for (; PID < 0x100000000; ++PID)
+  {
+    uint psv = (int)((pid >> 16 ^ (pid & 0xFFFF)) >> 3);
+    if (psv == tsv)
+    {
+      //      if (count % 1024 == 0)
+      //      {
+      random();
+      //      }
+    }
+  }
+  fprintf(stderr, "遍历%lu个宝可梦,找到%u个有缘怪...\n", PID, count);
+}
+
+void find_lucky_trainer(uint pid, uint& tid, uint& sid)
+{
+  uint psv = (int)((pid >> 16 ^ (pid & 0xFFFF)) >> 3);
+
+  ulong tidsid = 0;
+  uint count{};
+  for (; tidsid < 0x100000000; ++tidsid)
+  {
+    uint TID = tidsid >> 16;
+    uint SID = tidsid & 0xFFFF;
+
+    uint tsv = (SID ^ TID) >> 3;
+
+    if (psv == tsv)
+    {
+      if (SID == 0)
+      {
+        random();
+      }
+      ++count;
+    }
+  }
+  fprintf(stderr, "遍历%lu个训练家,找到%u个有缘人...\n", tidsid, count);
+}
+
+void test_for_g3_ivs()
+{
+  IVs _6v(31, 31, 31, 31, 31, 31);
+  IVs _5v0a(31, 0, 31, 31, 31, 31);
+  IVs _5v0e(31, 31, 31, 31, 31, 0);
+  IVs _4v0a0e(31, 0, 31, 31, 31, 0);
+
+  {
+    uint pid = 0x6d243843;
+
+    uint top = pid >> 16;
+    uint bot = pid & 0xFFFF;
+
+    IVs ivs;
+    bool success = GetLCRNGMatch(top, bot, _5v0e, ivs);
+  }
+  //  return;
+
+  struct OneTry
+  {
+    uint seed;
+    uint pid;
+    Nature nature;
+  };
+
+  std::unordered_map<uint, std::vector<OneTry>> result_hash;
+  result_hash.emplace(_6v.data, std::vector<OneTry>());
+  result_hash.emplace(_5v0a.data, std::vector<OneTry>());
+  result_hash.emplace(_5v0e.data, std::vector<OneTry>());
+  result_hash.emplace(_4v0a0e.data, std::vector<OneTry>());
+
+  ulong count{};
+  ulong found_count{};
+  for (ulong e = 1; e < 0x100000000L; ++e)
+  {
+    OneTry one_try;
+    one_try.seed = e;
+
+    IVs ivs;
+    GeneratePIDIVs(PIDType::Method_1, one_try.seed, one_try.pid, ivs,
+                   one_try.nature);
+
+    auto iter = result_hash.find(ivs.data);
+    if (result_hash.end() != iter)
+    {
+      ++found_count;
+      iter->second.push_back(one_try);
+    }
+    ++count;
+  }
+
+  for (const auto& item : result_hash)
+  {
+    IVs ivs(item.first);
+    std::cout << std::dec << ivs[0] << "," << ivs[1] << "," << ivs[2] << ","
+              << ivs[3] << "," << ivs[4] << "," << ivs[5] << std::endl;
+    for (const auto& one_try : item.second)
+    {
+      std::cout << std::hex << "  0x" << one_try.seed << ",0x" << one_try.pid
+                << ",";
+      std::cout << std::dec << GetNatureStr(one_try.nature) << std::endl;
+    }
+    std::cout << std::endl;
+  }
+  fprintf(stderr, "查找%lu次,保留结果%lu个\n", count, found_count);
+}
+
 int main(int argc, char* argv[])
 {
+  //    uint sid, tid;
+  //    find_lucky_trainer(0xcfbeaf43, tid, sid);
+
+  //  uint pid;
+  //  find_pid(24818, 0, pid);
+//  test_for_g3_ivs();
+//  return 0;
+
   if (!parse_cmd_args(argc, argv, g_opt_def,
                       sizeof(g_opt_def) / sizeof(sArgDef)))
     return 1;
