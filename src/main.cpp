@@ -712,6 +712,48 @@ void test_for_g3_ivs()
   fprintf(stderr, "查找%lu次,保留结果%lu个\n", count, found_count);
 }
 
+void FindStarShinyTrainer()
+{
+  std::vector<uint> candidate_seed{0x44e87f35, 0x4dd86a64, 0x54676db9,
+                                   0xe7cf1d3c, 0xf7400fb0, 0xfe701ae1};
+  uint G8TID = 871229;
+  IVs expect_ivs;
+  expect_ivs.IV_HP = 31;
+  expect_ivs.IV_ATK = 0;
+  expect_ivs.IV_DEF = 31;
+  expect_ivs.IV_SPA = 31;
+  expect_ivs.IV_SPD = 31;
+  expect_ivs.IV_SPE = 31;
+
+  for (uint G8SID = 0; G8SID <= 4294; ++G8SID)
+  {
+    ITrainerID trainer;
+
+    // 内部计算用的真实ID需要转一下
+    uint tidsid = G8SID * 1000000 + G8TID;
+    trainer.SID = tidsid & 0xFFFF;
+    trainer.TID = tidsid >> 16;
+
+    for (auto e : candidate_seed)
+    {
+      auto finder = RNGPokemonFinderFactory::CreateFinder(
+          RNDType::kSWSHOverworld, trainer, expect_ivs, e, Shiny::kStar, 0);
+      if (finder->Step1IsSatisfied())
+      {
+        const auto& pkm = finder->Step2GetPokemon();
+        std::cout << "tid=" << G8TID << std::endl;
+        std::cout << "sid=" << G8SID << std::endl;
+        std::cout << std::hex << "e=0x" << pkm.EncryptionConstant << std::endl;
+        std::cout << std::hex << "pid=0x" << pkm.PID << std::endl;
+        std::cout << "ability=" << pkm.AbilityNumber << std::endl;
+        std::cout << std::dec << "Height=" << pkm.HeightScalar << std::endl;
+        std::cout << std::dec << "Weight=" << pkm.WeightScalar << std::endl;
+        std::cout << std::endl;
+      }
+    }
+  }
+}
+
 int main(int argc, char* argv[])
 {
   //    uint sid, tid;
