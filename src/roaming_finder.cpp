@@ -28,6 +28,8 @@ bool RoamingFinder::Step1IsSatisfied()
   while (determined < flawless_count_)
   {
     int idx = (int)rnd_.NextUInt(6);
+    if (rnd_ivs[idx] == kFlawlessValue)
+      continue;
     rnd_ivs.Set(idx, kFlawlessValue);
     ++determined;
   }
