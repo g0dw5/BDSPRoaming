@@ -21,35 +21,21 @@ bool OverworldFinder::Step1IsSatisfied()
   if (shiny_type_you_want_ != pkm_.shiny)
     return false;
 
-  std::vector<int> ivs{kUnsetIV, kUnsetIV, kUnsetIV,
-                       kUnsetIV, kUnsetIV, kUnsetIV};
-
+  IVs rnd_ivs;
   // 用完美个数取index,剩下的随机个体值
   int determined = 0;
   while (determined < flawless_count_)
   {
     int idx = (int)rnd_.NextInt(6);
-    if (ivs[idx] != kUnsetIV)
-      continue;
-
-    ivs[idx] = kFlawlessValue;
-
-    uint expect_value = *((uint*)(&expect_ivs_) + idx);
-    if (ivs[idx] != expect_value)
-      return false;
-
+    rnd_ivs.Set(idx, kFlawlessValue);
     ++determined;
   }
-
-  for (int idx = 0; idx < ivs.size(); ++idx)
+  for (int idx = 0; idx < kIVCount; ++idx)
   {
-    if (ivs[idx] == kUnsetIV)
+    // 依赖了初始化不能是31
+    if (rnd_ivs[idx] != kFlawlessValue)
     {
-      ivs[idx] = (int)rnd_.NextInt(kFlawlessValue + 1);
-
-      uint expect_value = *((uint*)(&expect_ivs_) + idx);
-      if (ivs[idx] != expect_value)
-        return false;
+      rnd_ivs.Set(idx, (int)rnd_.NextInt(kFlawlessValue + 1));
     }
   }
 
@@ -60,14 +46,10 @@ bool OverworldFinder::Step1IsSatisfied()
   //  if (ivs[3] != expect_ivs_.IV_SPA) return false;
   //  if (ivs[4] != expect_ivs_.IV_SPD) return false;
   //  if (ivs[5] != expect_ivs_.IV_SPE) return false;
+  if (expect_ivs_.data != rnd_ivs.data)
+    return false;
 
-  pkm_.IV_HP = ivs[0];
-  pkm_.IV_ATK = ivs[1];
-  pkm_.IV_DEF = ivs[2];
-  pkm_.IV_SPA = ivs[3];
-  pkm_.IV_SPD = ivs[4];
-  pkm_.IV_SPE = ivs[5];
-
+  pkm_.data = expect_ivs_.data;
   return true;
 }
 

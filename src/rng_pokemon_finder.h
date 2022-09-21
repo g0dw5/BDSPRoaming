@@ -79,8 +79,8 @@ class IRNGPokemonFinder
 
   PKM pkm_;
 
+  static constexpr uint kIVCount = 6;
   static constexpr uint kFlawlessValue = 31;
-  static constexpr int kUnsetIV = -1;
 };
 
 class RNGPokemonFinderFactory
