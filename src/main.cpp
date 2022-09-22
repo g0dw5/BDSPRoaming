@@ -1,4 +1,5 @@
 #include <cmath>
+#include <iomanip>
 #include <iostream>
 #include <list>
 #include <regex>
@@ -600,33 +601,12 @@ bool GetLCRNGMatch(uint top, uint bot, IVs ivs, IVs& pidiv)
   return false;
 }
 
-void find_pid(uint tid, uint sid, uint& pid)
-{
-  uint tsv = (sid ^ tid) >> 3;
-
-  ulong PID = 0;
-  uint count{};
-  for (; PID < 0x100000000; ++PID)
-  {
-    uint psv = (int)((pid >> 16 ^ (pid & 0xFFFF)) >> 3);
-    if (psv == tsv)
-    {
-      //      if (count % 1024 == 0)
-      //      {
-      random();
-      //      }
-    }
-  }
-  fprintf(stderr, "遍历%lu个宝可梦,找到%u个有缘怪...\n", PID, count);
-}
-
-void find_lucky_trainer(uint pid, uint& tid, uint& sid)
+void find_lucky_trainer(uint pid, const std::string& tid_pattern,
+                        std::vector<ITrainerID>& trainers)
 {
   uint psv = (int)((pid >> 16 ^ (pid & 0xFFFF)) >> 3);
 
-  ulong tidsid = 0;
-  uint count{};
-  for (; tidsid < 0x100000000; ++tidsid)
+  for (ulong tidsid = 0; tidsid < 0x100000000; ++tidsid)
   {
     uint TID = tidsid >> 16;
     uint SID = tidsid & 0xFFFF;
@@ -635,14 +615,30 @@ void find_lucky_trainer(uint pid, uint& tid, uint& sid)
 
     if (psv == tsv)
     {
-      if (SID == 0)
+      std::ostringstream oss;
+      oss << std::setw(6) << std::setfill('0') << TID;
+      std::string tid_str = oss.str();
+
+      bool match = true;
+      for (int i = 0; i < 6; ++i)
       {
-        random();
+        bool char_match =
+            (tid_pattern[i] == '*' || tid_pattern[i] == tid_str[i]);
+        if (!char_match)
+        {
+          match = false;
+          break;
+        }
       }
-      ++count;
+      if (match)
+      {
+        ITrainerID trainer;
+        trainer.SID = SID;
+        trainer.TID = TID;
+        trainers.push_back(trainer);
+      }
     }
   }
-  fprintf(stderr, "遍历%lu个训练家,找到%u个有缘人...\n", tidsid, count);
 }
 
 void test_for_g3_ivs()
@@ -756,13 +752,25 @@ void FindStarShinyTrainer()
 
 int main(int argc, char* argv[])
 {
-  //    uint sid, tid;
-  //    find_lucky_trainer(0xcfbeaf43, tid, sid);
+  //  test_for_g3_ivs();
 
-  //  uint pid;
-  //  find_pid(24818, 0, pid);
-//  test_for_g3_ivs();
-//  return 0;
+  std::vector<uint> candidate_pid{0xf9426f72, 0x6937da48, 0x685011a9,
+                                  0x7942ef72, 0xe9375a48, 0xe85091a9};
+  std::string pattern("**1229");
+  // TODO(wang.song) check pattern
+  for (auto pid : candidate_pid)
+  {
+    std::vector<ITrainerID> trainers;
+    find_lucky_trainer(pid, pattern, trainers);
+    for (const auto& trainer : trainers)
+    {
+      std::cout << std::hex << "PID=0x" << pid << ",";
+      std::cout << std::dec << "TID=" << trainer.TID << ",";
+      std::cout << std::dec << "SID=" << trainer.SID << std::endl;
+    }
+  }
+
+  return 0;
 
   if (!parse_cmd_args(argc, argv, g_opt_def,
                       sizeof(g_opt_def) / sizeof(sArgDef)))
