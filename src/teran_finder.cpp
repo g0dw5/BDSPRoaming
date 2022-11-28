@@ -70,6 +70,9 @@ void TeranFinder::FindAllResult()
   ThreadPool thread_pool(std::thread::hardware_concurrency());
   std::list<std::future<std::vector<Result>>> futures;
 
+  uint32_t seed_count_in_one_batch{8192};
+  uint64_t batch_count = 0x100000000L / seed_count_in_one_batch;
+
   for (int i = 0; i < 2; ++i)
   {
     bool is_scarlet = i;
@@ -77,27 +80,34 @@ void TeranFinder::FindAllResult()
     {
       bool is_black = j;
 
-      for (ulong seed = 0; seed < 0x100000000L; ++seed)
+      for (uint64_t batch = 0; batch < batch_count; ++batch)
       {
-        futures.emplace_back(thread_pool.enqueue(
-            [this, is_scarlet, is_black, seed]
-            {
-              uint32_t star_count{};
-              uint32_t teran_type{};
-              std::vector<uint32_t> species_array;
-              get_species_and_teran_type(is_scarlet, is_black, seed, star_count,
-                                         teran_type, species_array);
+        uint32_t seed_beg = seed_count_in_one_batch * batch;
+        uint32_t seed_end = seed_count_in_one_batch * (batch + 1);
 
+        futures.emplace_back(thread_pool.enqueue(
+            [this, is_scarlet, is_black, seed_beg, seed_end]
+            {
               std::vector<Result> result_array;
-              for (const auto& species : species_array)
+
+              for (ulong seed = seed_beg; seed < seed_end; ++seed)
               {
+                uint32_t star_count{};
+                uint32_t teran_type{};
+                std::vector<uint32_t> species_array;
+                get_species_and_teran_type(is_scarlet, is_black, seed,
+                                           star_count, teran_type,
+                                           species_array);
+                if (species_array.size() != 1)
+                  continue;
+
                 Result result;
                 result.is_scarlet = is_scarlet;
                 result.is_black = is_black;
                 result.seed = seed;
                 result.star_count = star_count;
                 result.teran_type = teran_type;
-                result.species = species;
+                result.species = species_array[0];
 
                 generate_pkm_info(seed, star_count - 1, result);
 
@@ -265,6 +275,8 @@ void TeranFinder::get_species_and_teran_type(
     if (abs(species_roll - minimum) < encounter.rand_rate)
     {
       species_array.push_back(encounter.species);
+      // 有序只返回一个
+      break;
     }
   }
 
