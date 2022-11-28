@@ -140,9 +140,10 @@ void TeranFinder::FindAllResult()
                 uint32_t star_count{};
                 uint32_t teran_type{};
                 std::vector<uint32_t> species_array;
+                int species_roll{};
                 get_species_and_teran_type(is_scarlet, is_black, seed,
                                            star_count, teran_type,
-                                           species_array);
+                                           species_array, species_roll);
                 if (species_array.size() != 1)
                   continue;
 
@@ -311,7 +312,8 @@ int GetStarCount(uint Difficulty, int Progress, bool IsBlack)
 
 void TeranFinder::get_species_and_teran_type(
     bool is_scarlet, bool is_black, uint32_t seed, uint32_t& star_count,
-    uint32_t& teran_type, std::vector<uint32_t>& species_array)
+    uint32_t& teran_type, std::vector<uint32_t>& species_array,
+    int& species_roll)
 {
   Xoroshiro128Plus rng(seed);
 
@@ -320,13 +322,15 @@ void TeranFinder::get_species_and_teran_type(
   uint total = is_scarlet ? GetRateTotalBaseScarlet(star_count)
                           : GetRateTotalBaseViolet(star_count);
 
-  int species_roll = rng.NextInt(total);
+  species_roll = rng.NextInt(total);
 
   auto iter_star = encounter_hash_.find(star_count);
   for (const auto& encounter : iter_star->second)
   {
     int minimum = is_scarlet ? encounter.rand_rate_min_scarlet
                              : encounter.rand_rate_min_violet;
+    if (minimum == -1)
+      continue;
 
     // TODO(wang.song) 改成查表优化性能
     if (abs(species_roll - minimum) < encounter.rand_rate)

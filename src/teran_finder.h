@@ -52,7 +52,8 @@ class TeranFinder
  private:
   void get_species_and_teran_type(bool is_scarlet, bool is_black, uint32_t seed,
                                   uint32_t& star_count, uint32_t& teran_type,
-                                  std::vector<uint32_t>& species_array);
+                                  std::vector<uint32_t>& species_array,
+                                  int& species_roll);
   void generate_pkm_info(uint32_t seed, int miniv, Result& result);
 };
 
