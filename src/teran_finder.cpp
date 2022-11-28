@@ -67,58 +67,71 @@ void TeranFinder::FindAllResult()
   //       决定图鉴编号与太晶类型
   //       决定ec/pid/shiny/ivs
 
-  //  ThreadPool thread_pool(std::thread::hardware_concurrency());
-  //  std::list<std::future<Result>> futures;
+  ThreadPool thread_pool(std::thread::hardware_concurrency());
+  std::list<std::future<std::vector<Result>>> futures;
 
-  for (int i = 1; i < 2; ++i)
+  for (int i = 0; i < 2; ++i)
   {
     bool is_scarlet = i;
-    for (int j = 1; j < 2; ++j)
+    for (int j = 0; j < 2; ++j)
     {
       bool is_black = j;
 
-      for (ulong seed = 0; seed < 0x001000000L; ++seed)
+      for (ulong seed = 0; seed < 0x100000000L; ++seed)
       {
-        uint32_t star_count{};
-        uint32_t teran_type{};
-        std::vector<uint32_t> species_array;
-        get_species_and_teran_type(is_scarlet, is_black, seed, star_count,
-                                   teran_type, species_array);
+        futures.emplace_back(thread_pool.enqueue(
+            [this, is_scarlet, is_black, seed]
+            {
+              uint32_t star_count{};
+              uint32_t teran_type{};
+              std::vector<uint32_t> species_array;
+              get_species_and_teran_type(is_scarlet, is_black, seed, star_count,
+                                         teran_type, species_array);
 
-        for (const auto& species : species_array)
-        {
-          Result result;
-          result.is_scarlet = is_scarlet;
-          result.is_black = is_black;
-          result.seed = seed;
-          result.star_count = star_count;
-          result.teran_type = teran_type;
-          result.species = species;
+              std::vector<Result> result_array;
+              for (const auto& species : species_array)
+              {
+                Result result;
+                result.is_scarlet = is_scarlet;
+                result.is_black = is_black;
+                result.seed = seed;
+                result.star_count = star_count;
+                result.teran_type = teran_type;
+                result.species = species;
 
-          generate_pkm_info(seed, star_count - 1, result);
+                generate_pkm_info(seed, star_count - 1, result);
 
-          if (result.shiny_type != 1)
-            continue;
-          if (result.ivs.IV_HP != 31 || result.ivs.IV_ATK != 31 ||
-              result.ivs.IV_DEF != 31 || result.ivs.IV_SPA != 31 ||
-              result.ivs.IV_SPD != 31 || result.ivs.IV_SPE != 31)
-          {
-            continue;
-          }
+                if (result.shiny_type != 1)
+                  continue;
+                if (result.ivs.IV_HP != 31 || result.ivs.IV_ATK != 31 ||
+                    result.ivs.IV_DEF != 31 || result.ivs.IV_SPA != 31 ||
+                    result.ivs.IV_SPD != 31 || result.ivs.IV_SPE != 31)
+                {
+                  continue;
+                }
 
-          result_array_.emplace_back(result);
-        }
+                result_array.emplace_back(result);
+              }
+              return result_array;
+            }));
       }
     }
   }
 
+  for (auto& f : futures)
+  {
+    const auto& result_array = f.get();
+    for (const auto& result : result_array)
+      result_array_.push_back(result);
+  }
+
   std::ofstream ofstr("result.txt");
-  ofstr << "sv,is_black,seed,star_count,teran_type,species,ec,pid,shiny,";
+  ofstr << "版本,坑类型,seed,星级,太晶类型,图鉴编号,ec,pid,是否闪光,";
   ofstr << "hp,atk,def,spa,spd,spe" << std::endl;
   for (const auto& result : result_array_)
   {
-    ofstr << (result.is_scarlet ? "S" : "V") << ",";
-    ofstr << (result.is_black ? 1 : 0) << ",";
+    ofstr << (result.is_scarlet ? "朱" : "紫") << ",";
+    ofstr << (result.is_black ? "黑坑" : "普通") << ",";
     ofstr << std::hex << "0x" << result.seed << ",";
     ofstr << std::dec << result.star_count << "," << result.teran_type << ","
           << result.species << ",";
