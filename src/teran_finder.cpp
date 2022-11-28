@@ -248,8 +248,7 @@ void TeranFinder::get_species_and_teran_type(
 {
   Xoroshiro128Plus rng(seed);
 
-  uint Difficulty = rng.NextInt(100);
-  star_count = GetStarCount(Difficulty, 4, is_black);
+  star_count = is_black ? 6 : GetStarCount(rng.NextInt(100), 4, is_black);
 
   uint total = is_scarlet ? GetRateTotalBaseScarlet(star_count)
                           : GetRateTotalBaseViolet(star_count);
