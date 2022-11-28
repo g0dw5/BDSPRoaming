@@ -15,7 +15,7 @@
 class TeranFinder
 {
  public:
-  TeranFinder(std::string encounter_csv);
+  TeranFinder();
 
  public:
   void FindAllResult();
@@ -23,12 +23,12 @@ class TeranFinder
  private:
   struct Result
   {
-    bool is_scarlet{};
-    bool is_black{};
     uint32_t seed{};
-    uint32_t star_count{};
     uint32_t teran_type;
-    uint32_t species{0};
+    uint32_t star_count{};
+    // 一个seed可以在不同版本出不同的物种(这样也能只算一次ivs)
+    uint32_t scarlet_species{0};
+    uint32_t violet_species{0};
     uint32_t ec;
     uint32_t tidsid;
     uint32_t pid;
@@ -37,23 +37,13 @@ class TeranFinder
   };
   std::vector<Result> result_array_;
 
-  struct Encounter
-  {
-    uint32_t species;
-    uint32_t stars;
-
-    int rand_rate_min_scarlet;
-    int rand_rate_min_violet;
-
-    uint32_t rand_rate;
-  };
-  std::unordered_map<uint32_t, std::vector<Encounter>> encounter_hash_;
+  std::vector<std::vector<uint32_t>>
+      scarlet_species_;  // 第一层是几星(0预留空位),第二层是该等级下宝可梦数量
+  std::vector<std::vector<uint32_t>>
+      violet_species_;  // 第一层是几星(0预留空位),第二层是该等级下宝可梦数量
 
  private:
-  void get_species_and_teran_type(bool is_scarlet, bool is_black, uint32_t seed,
-                                  uint32_t& star_count, uint32_t& teran_type,
-                                  std::vector<uint32_t>& species_array,
-                                  int& species_roll);
+  void generate_info(uint32_t seed, std::vector<Result>& result_array);
   void generate_pkm_info(uint32_t seed, int miniv, Result& result);
 };
 

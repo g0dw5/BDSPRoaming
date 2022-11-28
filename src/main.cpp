@@ -441,8 +441,7 @@ void FindTrainersByOriginalPID()
 
 int main(int argc, char* argv[])
 {
-  std::string encounter_csv("/Users/wang.song/Downloads/encounter.csv");
-  TeranFinder teran_finder(encounter_csv);
+  TeranFinder teran_finder;
   teran_finder.FindAllResult();
 
   return 0;
