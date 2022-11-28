@@ -346,6 +346,8 @@ void TeranFinder::generate_info(uint32_t seed,
     }
 
     generate_pkm_info(seed, star_count - 1, result);
+
+    result_array.emplace_back(result);
   }
 }
 
