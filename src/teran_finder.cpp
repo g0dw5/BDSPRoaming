@@ -59,6 +59,51 @@ TeranFinder::TeranFinder(std::string encounter_csv)
   }
 }
 
+std::string GetTeranString(uint32_t teran_type)
+{
+  switch (teran_type)
+  {
+    case 0:
+      return "一般";
+    case 1:
+      return "格斗";
+    case 2:
+      return "飞行";
+    case 3:
+      return "毒";
+    case 4:
+      return "地面";
+    case 5:
+      return "岩石";
+    case 6:
+      return "虫";
+    case 7:
+      return "幽灵";
+    case 8:
+      return "钢";
+    case 9:
+      return "火";
+    case 10:
+      return "水";
+    case 11:
+      return "草";
+    case 12:
+      return "电";
+    case 13:
+      return "超能力";
+    case 14:
+      return "冰";
+    case 15:
+      return "龙";
+    case 16:
+      return "恶";
+    case 17:
+      return "妖精";
+    default:
+      __builtin_trap();
+  }
+}
+
 void TeranFinder::FindAllResult()
 {
   // 循环朱/紫
@@ -113,12 +158,25 @@ void TeranFinder::FindAllResult()
 
                 if (result.shiny_type != 1)
                   continue;
-                if (result.ivs.IV_HP != 31 || result.ivs.IV_ATK != 31 ||
-                    result.ivs.IV_DEF != 31 || result.ivs.IV_SPA != 31 ||
-                    result.ivs.IV_SPD != 31 || result.ivs.IV_SPE != 31)
-                {
+
+                bool is_6v =
+                    (result.ivs.IV_HP == 31 && result.ivs.IV_ATK == 31 &&
+                     result.ivs.IV_DEF == 31 && result.ivs.IV_SPA == 31 &&
+                     result.ivs.IV_SPD == 31 && result.ivs.IV_SPE == 31);
+                bool is_5v0a =
+                    (result.ivs.IV_HP == 31 && result.ivs.IV_ATK == 0 &&
+                     result.ivs.IV_DEF == 31 && result.ivs.IV_SPA == 31 &&
+                     result.ivs.IV_SPD == 31 && result.ivs.IV_SPE == 31);
+                bool is_5v0e =
+                    (result.ivs.IV_HP == 31 && result.ivs.IV_ATK == 31 &&
+                     result.ivs.IV_DEF == 31 && result.ivs.IV_SPA == 31 &&
+                     result.ivs.IV_SPD == 31 && result.ivs.IV_SPE == 0);
+                bool is_4v0a0e =
+                    (result.ivs.IV_HP == 31 && result.ivs.IV_ATK == 0 &&
+                     result.ivs.IV_DEF == 31 && result.ivs.IV_SPA == 31 &&
+                     result.ivs.IV_SPD == 31 && result.ivs.IV_SPE == 0);
+                if (!is_6v && !is_5v0a && !is_5v0e && !is_4v0a0e)
                   continue;
-                }
 
                 result_array.emplace_back(result);
               }
@@ -135,16 +193,15 @@ void TeranFinder::FindAllResult()
       result_array_.push_back(result);
   }
 
-  std::ofstream ofstr("result.txt");
-  ofstr << "版本,坑类型,seed,星级,太晶类型,图鉴编号,ec,pid,是否闪光,";
+  std::ofstream ofstr("result_only_shiny.txt");
+  ofstr << "版本,seed,星级,太晶,图鉴编号,ec,pid,是否闪光,";
   ofstr << "hp,atk,def,spa,spd,spe" << std::endl;
   for (const auto& result : result_array_)
   {
     ofstr << (result.is_scarlet ? "朱" : "紫") << ",";
-    ofstr << (result.is_black ? "黑坑" : "普通") << ",";
     ofstr << std::hex << "0x" << result.seed << ",";
-    ofstr << std::dec << result.star_count << "," << result.teran_type << ","
-          << result.species << ",";
+    ofstr << std::dec << result.star_count << ","
+          << GetTeranString(result.teran_type) << "," << result.species << ",";
     ofstr << std::hex << "0x" << result.ec << ",0x" << result.pid << ",";
     ofstr << std::dec << result.shiny_type << ",";
     ofstr << std::dec << result.ivs.IV_HP << "," << result.ivs.IV_ATK << ","
