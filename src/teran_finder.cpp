@@ -61,44 +61,72 @@ TeranFinder::TeranFinder(std::string encounter_csv)
 
 void TeranFinder::FindAllResult()
 {
-  bool is_scarlet = true;
+  // 循环朱/紫
+  //   循环是否black
+  //     循环所有seed,直接决定了种族与太晶类型
+  //       决定图鉴编号与太晶类型
+  //       决定ec/pid/shiny/ivs
 
-  int miniv = 5;
-  bool is_black = true;
+  //  ThreadPool thread_pool(std::thread::hardware_concurrency());
+  //  std::list<std::future<Result>> futures;
 
-  ThreadPool thread_pool(1);
-
-  std::list<std::future<Result>> futures;
-
-  for (ulong seed = 0; seed < 0x100000000L; ++seed)
+  for (int i = 1; i < 2; ++i)
   {
-    futures.emplace_back(thread_pool.enqueue(
-        [this, is_scarlet, seed, miniv, is_black]
+    bool is_scarlet = i;
+    for (int j = 1; j < 2; ++j)
+    {
+      bool is_black = j;
+
+      for (ulong seed = 0; seed < 0x001000000L; ++seed)
+      {
+        uint32_t star_count{};
+        uint32_t teran_type{};
+        std::vector<uint32_t> species_array;
+        get_species_and_teran_type(is_scarlet, is_black, seed, star_count,
+                                   teran_type, species_array);
+
+        for (const auto& species : species_array)
         {
           Result result;
-          generate_and_check(is_scarlet, seed, miniv, is_black, result);
+          result.is_scarlet = is_scarlet;
+          result.is_black = is_black;
+          result.seed = seed;
+          result.star_count = star_count;
+          result.teran_type = teran_type;
+          result.species = species;
 
-          return result;
-        }));
-  }
+          generate_pkm_info(seed, star_count - 1, result);
 
-  for (auto& f : futures)
-  {
-    Result result = f.get();
-    if (result.ivs.IV_HP != 31 || result.ivs.IV_ATK != 31 ||
-        result.ivs.IV_DEF != 31 || result.ivs.IV_SPA != 31 ||
-        result.ivs.IV_SPD != 31 || result.ivs.IV_SPE != 31)
-    {
-      continue;
+          if (result.shiny_type != 1)
+            continue;
+          if (result.ivs.IV_HP != 31 || result.ivs.IV_ATK != 31 ||
+              result.ivs.IV_DEF != 31 || result.ivs.IV_SPA != 31 ||
+              result.ivs.IV_SPD != 31 || result.ivs.IV_SPE != 31)
+          {
+            continue;
+          }
+
+          result_array_.emplace_back(result);
+        }
+      }
     }
-
-    result_array_.emplace_back(result);
   }
 
+  std::ofstream ofstr("result.txt");
+  ofstr << "sv,is_black,seed,star_count,teran_type,species,ec,pid,shiny,";
+  ofstr << "hp,atk,def,spa,spd,spe" << std::endl;
   for (const auto& result : result_array_)
   {
-    std::cout << result.species << "," << result.pid << "," << result.shiny_type
-              << "," << result.teran_type << std::endl;
+    ofstr << (result.is_scarlet ? "S" : "V") << ",";
+    ofstr << (result.is_black ? 1 : 0) << ",";
+    ofstr << std::hex << "0x" << result.seed << ",";
+    ofstr << std::dec << result.star_count << "," << result.teran_type << ","
+          << result.species << ",";
+    ofstr << std::hex << "0x" << result.ec << ",0x" << result.pid << ",";
+    ofstr << std::dec << result.shiny_type << ",";
+    ofstr << std::dec << result.ivs.IV_HP << "," << result.ivs.IV_ATK << ","
+          << result.ivs.IV_DEF << "," << result.ivs.IV_SPA << ","
+          << result.ivs.IV_SPD << "," << result.ivs.IV_SPE << std::endl;
   }
 }
 
@@ -201,88 +229,78 @@ int GetStarCount(uint Difficulty, int Progress, bool IsBlack)
   }
 }
 
-void TeranFinder::generate_and_check(bool is_scarlet, uint32_t seed, int miniv,
-                                     bool is_black, TeranFinder::Result& result)
+void TeranFinder::get_species_and_teran_type(
+    bool is_scarlet, bool is_black, uint32_t seed, uint32_t& star_count,
+    uint32_t& teran_type, std::vector<uint32_t>& species_array)
 {
-  // 精灵信息
+  Xoroshiro128Plus rng(seed);
+
+  uint Difficulty = rng.NextInt(100);
+  star_count = GetStarCount(Difficulty, 4, is_black);
+
+  uint total = is_scarlet ? GetRateTotalBaseScarlet(star_count)
+                          : GetRateTotalBaseViolet(star_count);
+
+  int species_roll = rng.NextInt(total);
+
+  auto iter_star = encounter_hash_.find(star_count);
+  for (const auto& encounter : iter_star->second)
   {
-    Xoroshiro128Plus rng(seed);
+    int minimum = is_scarlet ? encounter.rand_rate_min_scarlet
+                             : encounter.rand_rate_min_violet;
 
-    result.ec = (uint)rng.NextInt();
-    result.tidsid = (uint)rng.NextInt();
-    result.pid = (uint)rng.NextInt();
-    result.shiny_type =
-        (((result.pid >> 16) ^ (result.pid & 0xFFFF)) >> 4) ==
-                (((result.tidsid >> 16) ^ (result.tidsid & 0xFFFF)) >> 4)
-            ? 1
-            : 0;
-    if (result.shiny_type != 1)
-      return;
-
-    static constexpr uint kFlawlessValue = 31;
-    static constexpr int kUnsetIV = -1;
-    std::vector<int> ivs{kUnsetIV, kUnsetIV, kUnsetIV,
-                         kUnsetIV, kUnsetIV, kUnsetIV};
-
-    // 用完美个数取index,剩下的随机个体值
-    int determined = 0;
-    while (determined < miniv)
+    // TODO(wang.song) 改成查表优化性能
+    if (abs(species_roll - minimum) < encounter.rand_rate)
     {
-      int idx = (int)rng.NextInt(6);
-      if (ivs[idx] != kUnsetIV)
-        continue;
-
-      ivs[idx] = kFlawlessValue;
-      ++determined;
+      species_array.push_back(encounter.species);
     }
-
-    for (int idx = 0; idx < ivs.size(); ++idx)
-    {
-      if (ivs[idx] == kUnsetIV)
-      {
-        ivs[idx] = (int)rng.NextInt(kFlawlessValue + 1);
-        if (ivs[idx] != kFlawlessValue)
-        {
-          return;
-        }
-      }
-    }
-
-    result.ivs.IV_HP = ivs[0];
-    result.ivs.IV_ATK = ivs[1];
-    result.ivs.IV_DEF = ivs[2];
-    result.ivs.IV_SPA = ivs[3];
-    result.ivs.IV_SPD = ivs[4];
-    result.ivs.IV_SPE = ivs[5];
   }
 
-  // 获取太晶类型(18位)
-  result.teran_type = Xoroshiro128Plus(seed).NextInt(18);
+  teran_type = Xoroshiro128Plus(seed).NextInt(18);
+}
 
-  // 精灵种族与星级判定
+void TeranFinder::generate_pkm_info(uint32_t seed, int miniv, Result& result)
+{
+  Xoroshiro128Plus rng(seed);
+
+  result.ec = (uint)rng.NextInt();
+  result.tidsid = (uint)rng.NextInt();
+  result.pid = (uint)rng.NextInt();
+  result.shiny_type =
+      (((result.pid >> 16) ^ (result.pid & 0xFFFF)) >> 4) ==
+              (((result.tidsid >> 16) ^ (result.tidsid & 0xFFFF)) >> 4)
+          ? 1
+          : 0;
+
+  static constexpr uint kFlawlessValue = 31;
+  static constexpr int kUnsetIV = -1;
+  std::vector<int> ivs{kUnsetIV, kUnsetIV, kUnsetIV,
+                       kUnsetIV, kUnsetIV, kUnsetIV};
+
+  // 用完美个数取index,剩下的随机个体值
+  int determined = 0;
+  while (determined < miniv)
   {
-    Xoroshiro128Plus rng(seed);
+    int idx = (int)rng.NextInt(6);
+    if (ivs[idx] != kUnsetIV)
+      continue;
 
-    uint Difficulty = rng.NextInt(100);
-    int start_count = GetStarCount(Difficulty, 4, is_black);
+    ivs[idx] = kFlawlessValue;
+    ++determined;
+  }
 
-    uint total = is_scarlet ? GetRateTotalBaseScarlet(start_count)
-                            : GetRateTotalBaseViolet(start_count);
-
-    int species_roll = rng.NextInt(total);
-
-    auto iter_star = encounter_hash_.find(start_count);
-    for (const auto& encounter : iter_star->second)
+  for (int idx = 0; idx < ivs.size(); ++idx)
+  {
+    if (ivs[idx] == kUnsetIV)
     {
-      int minimum = is_scarlet ? encounter.rand_rate_min_scarlet
-                               : encounter.rand_rate_min_violet;
-
-      if (abs(species_roll - minimum) < encounter.rand_rate)
-      {
-        result.species = encounter.species;
-        // TODO(wang.song) 看配置表像是2命中,可以优化性能
-        return;
-      }
+      ivs[idx] = (int)rng.NextInt(kFlawlessValue + 1);
     }
   }
+
+  result.ivs.IV_HP = ivs[0];
+  result.ivs.IV_ATK = ivs[1];
+  result.ivs.IV_DEF = ivs[2];
+  result.ivs.IV_SPA = ivs[3];
+  result.ivs.IV_SPD = ivs[4];
+  result.ivs.IV_SPE = ivs[5];
 }

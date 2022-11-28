@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "rng_pokemon_finder.h"
+#include "teran_finder.h"
 
 #include "arg_op.h"
 #include "thread_pool.h"
@@ -440,6 +441,12 @@ void FindTrainersByOriginalPID()
 
 int main(int argc, char* argv[])
 {
+  std::string encounter_csv("/Users/wang.song/Downloads/encounter.csv");
+  TeranFinder teran_finder(encounter_csv);
+  teran_finder.FindAllResult();
+
+  return 0;
+
   if (!parse_cmd_args(argc, argv, g_opt_def,
                       sizeof(g_opt_def) / sizeof(sArgDef)))
     return 1;

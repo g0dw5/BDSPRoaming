@@ -23,13 +23,17 @@ class TeranFinder
  private:
   struct Result
   {
+    bool is_scarlet{};
+    bool is_black{};
+    uint32_t seed{};
+    uint32_t star_count{};
+    uint32_t teran_type;
     uint32_t species{0};
     uint32_t ec;
     uint32_t tidsid;
     uint32_t pid;
     uint32_t shiny_type;
     IVs ivs;
-    uint32_t teran_type;
   };
   std::vector<Result> result_array_;
 
@@ -46,8 +50,10 @@ class TeranFinder
   std::unordered_map<uint32_t, std::vector<Encounter>> encounter_hash_;
 
  private:
-  void generate_and_check(bool is_scarlet, uint32_t seed, int miniv,
-                          bool is_black, Result& result);
+  void get_species_and_teran_type(bool is_scarlet, bool is_black, uint32_t seed,
+                                  uint32_t& star_count, uint32_t& teran_type,
+                                  std::vector<uint32_t>& species_array);
+  void generate_pkm_info(uint32_t seed, int miniv, Result& result);
 };
 
 #endif  // ROAMINGID_SRC_TERAN_FINDER_H_
