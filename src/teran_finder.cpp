@@ -212,14 +212,14 @@ void TeranFinder::FindAllResult()
   ofstr << "hp,atk,def,spa,spd,spe" << std::endl;
   for (const auto& result : result_array_)
   {
-    if (result.scarlet_species == result.violet_species)
+    if (result.species[0] == result.species[1])
     {
       ofstr << "朱/紫"
             << ",";
       ofstr << std::hex << "0x" << result.seed << ",";
       ofstr << std::dec << result.star_count << ","
-            << GetTeranString(result.teran_type) << ","
-            << result.scarlet_species << ",";
+            << GetTeranString(result.teran_type) << "," << result.species[0]
+            << ",";
       ofstr << std::hex << "0x" << result.ec << ",0x" << result.pid << ",";
       ofstr << std::dec << result.shiny_type << ",";
       ofstr << std::dec << result.ivs.IV_HP << "," << result.ivs.IV_ATK << ","
@@ -232,8 +232,8 @@ void TeranFinder::FindAllResult()
             << ",";
       ofstr << std::hex << "0x" << result.seed << ",";
       ofstr << std::dec << result.star_count << ","
-            << GetTeranString(result.teran_type) << ","
-            << result.scarlet_species << ",";
+            << GetTeranString(result.teran_type) << "," << result.species[0]
+            << ",";
       ofstr << std::hex << "0x" << result.ec << ",0x" << result.pid << ",";
       ofstr << std::dec << result.shiny_type << ",";
       ofstr << std::dec << result.ivs.IV_HP << "," << result.ivs.IV_ATK << ","
@@ -244,7 +244,7 @@ void TeranFinder::FindAllResult()
             << ",";
       ofstr << std::hex << "0x" << result.seed << ",";
       ofstr << std::dec << result.star_count << ","
-            << GetTeranString(result.teran_type) << "," << result.violet_species
+            << GetTeranString(result.teran_type) << "," << result.species[1]
             << ",";
       ofstr << std::hex << "0x" << result.ec << ",0x" << result.pid << ",";
       ofstr << std::dec << result.shiny_type << ",";
@@ -321,32 +321,27 @@ void TeranFinder::generate_info(uint32_t seed,
   {
     bool is_black = i;
 
-    Xoroshiro128Plus rng(seed);
-    // 注意这里会跳过一次rng的调用
-    uint32_t star_count =
-        is_black ? 6 : GetStarCount(rng.NextInt(100), 4, is_black);
-
     Result result;
     result.seed = seed;
     result.teran_type = teran_type;
-    result.star_count = star_count;
 
+    for (int j = 0; j < 2; ++j)
     {
-      // 朱
-      const auto& species_table = scarlet_species_[star_count];
+      Xoroshiro128Plus rng(seed);
+      uint32_t star_count =
+          is_black ? 6 : GetStarCount(rng.NextInt(100), 4, is_black);
+      // 重复赋值,一定一样
+      result.star_count = star_count;
+
+      // 0朱1紫
+      const auto& species_table =
+          0 == j ? scarlet_species_[star_count] : violet_species_[star_count];
+
       int species_roll = rng.NextInt(species_table.size() * 100);
-      result.scarlet_species = species_table[species_roll / 100];
+      result.species[j] = species_table[species_roll / 100];
     }
 
-    {
-      // 紫
-      const auto& species_table = violet_species_[star_count];
-      int species_roll = rng.NextInt(species_table.size() * 100);
-      result.violet_species = species_table[species_roll / 100];
-    }
-
-    generate_pkm_info(seed, star_count - 1, result);
-
+    generate_pkm_info(seed, result.star_count - 1, result);
     result_array.emplace_back(result);
   }
 }

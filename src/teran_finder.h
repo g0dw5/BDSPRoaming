@@ -27,8 +27,7 @@ class TeranFinder
     uint32_t teran_type;
     uint32_t star_count{};
     // 一个seed可以在不同版本出不同的物种(这样也能只算一次ivs)
-    uint32_t scarlet_species{0};
-    uint32_t violet_species{0};
+    uint32_t species[2]{};  // 0是朱,1是紫
     uint32_t ec;
     uint32_t tidsid;
     uint32_t pid;
