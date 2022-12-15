@@ -11,6 +11,7 @@
 
 #include "Xoroshiro128Plus.h"
 #include "definitions.h"
+#include "PersonalTable9SV.h"
 
 class TeranFinder
 {
@@ -24,26 +25,33 @@ class TeranFinder
   struct Result
   {
     uint32_t seed{};
-    uint32_t teran_type;
     uint32_t star_count{};
-    // 一个seed可以在不同版本出不同的物种(这样也能只算一次ivs)
-    uint32_t species[2]{};  // 0是朱,1是紫
+    bool is_scarlet{};
+    // EncounterTera9编号
+    uint16_t encounter_index{};
+    uint32_t teran_type;
     uint32_t ec;
     uint32_t tidsid;
     uint32_t pid;
     uint32_t shiny_type;
     IVs ivs;
+    uint16_t ability;
+    uint8_t gender;
+    uint8_t nature;
+    uint8_t height;
+    uint8_t weight;
+    uint8_t scale;
   };
+  // 输出内容:朱/紫,seed,encounter_index(外键),ec,pid,shiny,iv_type(只四种),ability,gender,nature,height,weight,scale
   std::vector<Result> result_array_;
 
-  std::vector<std::vector<uint32_t>>
-      scarlet_species_;  // 第一层是几星(0预留空位),第二层是该等级下宝可梦数量
-  std::vector<std::vector<uint32_t>>
-      violet_species_;  // 第一层是几星(0预留空位),第二层是该等级下宝可梦数量
+  // 第一层是几星(0预留空位),第二层是该等级下宝可梦数量,数值为EncounterTera9Table的下标
+  std::vector<std::vector<uint32_t>> scarlet_species_;
+  std::vector<std::vector<uint32_t>> violet_species_;
 
  private:
   void generate_info(uint32_t seed, std::vector<Result>& result_array);
-  void generate_pkm_info(uint32_t seed, int miniv, Result& result);
+  void generate_pkm_info(uint32_t seed, const EncounterTera9 &encounter, Result &result);
 };
 
 #endif  // ROAMINGID_SRC_TERAN_FINDER_H_
