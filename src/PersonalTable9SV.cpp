@@ -4,6 +4,7 @@
 
 #include "PersonalTable9SV.h"
 
+#include <cstring>
 #include <fstream>
 #include <string>
 

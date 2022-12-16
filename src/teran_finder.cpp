@@ -5,12 +5,14 @@
 #include "teran_finder.h"
 
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <list>
 
 #include "PersonalTable9SV.h"
 #include "ReadableCHSDict.h"
 
+#include "scope_guard.h"
 #include "thread_pool.h"
 
 TeranFinder::TeranFinder()
@@ -59,53 +61,11 @@ TeranFinder::TeranFinder()
       });
 }
 
-std::string GetTeranString(uint32_t teran_type)
-{
-  switch (teran_type)
-  {
-    case 0:
-      return "一般";
-    case 1:
-      return "格斗";
-    case 2:
-      return "飞行";
-    case 3:
-      return "毒";
-    case 4:
-      return "地面";
-    case 5:
-      return "岩石";
-    case 6:
-      return "虫";
-    case 7:
-      return "幽灵";
-    case 8:
-      return "钢";
-    case 9:
-      return "火";
-    case 10:
-      return "水";
-    case 11:
-      return "草";
-    case 12:
-      return "电";
-    case 13:
-      return "超能力";
-    case 14:
-      return "冰";
-    case 15:
-      return "龙";
-    case 16:
-      return "恶";
-    case 17:
-      return "妖精";
-    default:
-      __builtin_trap();
-  }
-}
-
 void TeranFinder::FindAllResult()
 {
+  FunctionStopWatch stop_watch(__PRETTY_FUNCTION__, [](std::string msg)
+                               { std::cout << msg << std::endl; });
+
   // 1.循环所有seed
   //   1.1 确定ec/pid/shiny/ivs(直接跟过滤条件作用)
   //   1.2 循环朱紫版本,是否黑坑
@@ -153,7 +113,9 @@ void TeranFinder::FindAllResult()
                    result.ivs.IV_SPD == 31 && result.ivs.IV_SPE == 0);
 
               // 一样都不沾就算了吧
-              if (!is_shiny && !is_6v && !is_5v0a && !is_5v0e && !is_4v0a0e)
+              //              if (!is_shiny && !is_6v && !is_5v0a && !is_5v0e &&
+              //              !is_4v0a0e)
+              if (!is_shiny)
                 continue;
 
               result_array.emplace_back(result);
@@ -173,26 +135,32 @@ void TeranFinder::FindAllResult()
   const auto& dict = ReadableCHSDict::GetInstance();
 
   std::ofstream ofstr("result.txt");
-  ofstr << "version,stage,seed,encounter_index,ec,pid,shiny,";
-  ofstr << "hp,atk,def,spa,spd,spe,";
-  ofstr << "ability,gender,nature,height,weight,scale" << std::endl;
+  ofstr << "seed,version,stage,star_count,encounter_index,";
+  ofstr << "ec,pid,shiny,hp,atk,def,spa,spd,spe,";
+  ofstr << "tera,ability,gender,nature,height,weight,scale" << std::endl;
   for (const auto& result : result_array_)
   {
+    ofstr << std::hex << std::setw(8) << std::setfill('0') << "0x"
+          << result.seed << ",";
     ofstr << (result.is_scarlet ? "朱" : "紫") << ",";
     ofstr << (int)result.stage << ",";
-    ofstr << std::hex << "0x" << result.seed << ",";
+    ofstr << std::dec << result.star_count << ",";
     ofstr << std::dec << result.encounter_index << ",";
-    ofstr << std::hex << "0x" << result.ec << ",0x" << result.pid << ",";
+
+    ofstr << std::hex << std::setw(8) << std::setfill('0') << "0x" << result.ec
+          << ",0x" << result.pid << ",";
     ofstr << std::dec << result.shiny_type << ",";
     ofstr << std::dec << result.ivs.IV_HP << "," << result.ivs.IV_ATK << ","
           << result.ivs.IV_DEF << "," << result.ivs.IV_SPA << ","
           << result.ivs.IV_SPD << "," << result.ivs.IV_SPE << ",";
+
+    ofstr << dict.GetType(result.tera_type) << ",";
     ofstr << dict.GetAbility(result.ability) << ",";
     ofstr << dict.GetGender(result.gender) << ",";
     ofstr << dict.GetNature(result.nature) << ",";
-    ofstr << std::dec << result.height << ",";
-    ofstr << std::dec << result.weight << ",";
-    ofstr << std::dec << result.scale << ",";
+    ofstr << std::dec << (int)result.height << ",";
+    ofstr << std::dec << (int)result.weight << ",";
+    ofstr << std::dec << (int)result.scale << ",";
     ofstr << std::endl;
   }
   ofstr.close();
@@ -313,7 +281,7 @@ void TeranFinder::generate_pkm_info(uint32_t seed,
   const auto& species =
       species_table.GetSpeciesWithForm(encounter.Species, encounter.Form);
 
-  result.teran_type = Xoroshiro128Plus(seed).NextInt(18);
+  result.tera_type = Xoroshiro128Plus(seed).NextInt(18);
 
   Xoroshiro128Plus rng(seed);
 

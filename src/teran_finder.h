@@ -30,7 +30,7 @@ class TeranFinder
     uint8_t stage{};
     // EncounterTera9编号
     uint16_t encounter_index{};
-    uint32_t teran_type;
+    uint32_t tera_type;
     uint32_t ec;
     uint32_t tidsid;
     uint32_t pid;
