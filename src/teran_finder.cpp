@@ -140,15 +140,17 @@ void TeranFinder::FindAllResult()
   ofstr << "tera,ability,gender,nature,height,weight,scale" << std::endl;
   for (const auto& result : result_array_)
   {
-    ofstr << std::hex << std::setw(8) << std::setfill('0') << "0x"
+    ofstr << std::hex << "0x" << std::setw(8) << std::setfill('0')
           << result.seed << ",";
     ofstr << (result.is_scarlet ? "朱" : "紫") << ",";
     ofstr << (int)result.stage << ",";
     ofstr << std::dec << result.star_count << ",";
     ofstr << std::dec << result.encounter_index << ",";
 
-    ofstr << std::hex << std::setw(8) << std::setfill('0') << "0x" << result.ec
-          << ",0x" << result.pid << ",";
+    ofstr << "0x" << std::hex << std::setw(8) << std::setfill('0') << result.ec
+          << ",";
+    ofstr << "0x" << std::hex << std::setw(8) << std::setfill('0') << result.pid
+          << ",";
     ofstr << std::dec << result.shiny_type << ",";
     ofstr << std::dec << result.ivs.IV_HP << "," << result.ivs.IV_ATK << ","
           << result.ivs.IV_DEF << "," << result.ivs.IV_SPA << ","
