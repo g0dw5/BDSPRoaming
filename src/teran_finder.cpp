@@ -170,55 +170,32 @@ void TeranFinder::FindAllResult()
       result_array_.push_back(result);
   }
 
-  std::cout << "总结" << result_array_.size() << "种" << std::endl;
-  /*
-    std::ofstream ofstr("result_only_shiny.txt");
-    ofstr << "版本,seed,星级,太晶,图鉴编号,ec,pid,是否闪光,";
-    ofstr << "hp,atk,def,spa,spd,spe" << std::endl;
-    for (const auto& result : result_array_)
-    {
-      if (result.encounter_index[0] == result.encounter_index[1])
-      {
-        ofstr << "朱/紫"
-              << ",";
-        ofstr << std::hex << "0x" << result.seed << ",";
-        ofstr << std::dec << result.star_count << ","
-              << GetTeranString(result.teran_type) << ","
-              << result.encounter_index[0] << ",";
-        ofstr << std::hex << "0x" << result.ec << ",0x" << result.pid << ",";
-        ofstr << std::dec << result.shiny_type << ",";
-        ofstr << std::dec << result.ivs.IV_HP << "," << result.ivs.IV_ATK << ","
-              << result.ivs.IV_DEF << "," << result.ivs.IV_SPA << ","
-              << result.ivs.IV_SPD << "," << result.ivs.IV_SPE << std::endl;
-      }
-      else
-      {
-        ofstr << "朱"
-              << ",";
-        ofstr << std::hex << "0x" << result.seed << ",";
-        ofstr << std::dec << result.star_count << ","
-              << GetTeranString(result.teran_type) << ","
-              << result.encounter_index[0] << ",";
-        ofstr << std::hex << "0x" << result.ec << ",0x" << result.pid << ",";
-        ofstr << std::dec << result.shiny_type << ",";
-        ofstr << std::dec << result.ivs.IV_HP << "," << result.ivs.IV_ATK << ","
-              << result.ivs.IV_DEF << "," << result.ivs.IV_SPA << ","
-              << result.ivs.IV_SPD << "," << result.ivs.IV_SPE << std::endl;
+  const auto& dict = ReadableCHSDict::GetInstance();
 
-        ofstr << "紫"
-              << ",";
-        ofstr << std::hex << "0x" << result.seed << ",";
-        ofstr << std::dec << result.star_count << ","
-              << GetTeranString(result.teran_type) << ","
-              << result.encounter_index[1] << ",";
-        ofstr << std::hex << "0x" << result.ec << ",0x" << result.pid << ",";
-        ofstr << std::dec << result.shiny_type << ",";
-        ofstr << std::dec << result.ivs.IV_HP << "," << result.ivs.IV_ATK << ","
-              << result.ivs.IV_DEF << "," << result.ivs.IV_SPA << ","
-              << result.ivs.IV_SPD << "," << result.ivs.IV_SPE << std::endl;
-      }
-    }
-    */
+  std::ofstream ofstr("result.txt");
+  ofstr << "version,stage,seed,encounter_index,ec,pid,shiny,";
+  ofstr << "hp,atk,def,spa,spd,spe,";
+  ofstr << "ability,gender,nature,height,weight,scale" << std::endl;
+  for (const auto& result : result_array_)
+  {
+    ofstr << (result.is_scarlet ? "朱" : "紫") << ",";
+    ofstr << (int)result.stage << ",";
+    ofstr << std::hex << "0x" << result.seed << ",";
+    ofstr << std::dec << result.encounter_index << ",";
+    ofstr << std::hex << "0x" << result.ec << ",0x" << result.pid << ",";
+    ofstr << std::dec << result.shiny_type << ",";
+    ofstr << std::dec << result.ivs.IV_HP << "," << result.ivs.IV_ATK << ","
+          << result.ivs.IV_DEF << "," << result.ivs.IV_SPA << ","
+          << result.ivs.IV_SPD << "," << result.ivs.IV_SPE << ",";
+    ofstr << dict.GetAbility(result.ability) << ",";
+    ofstr << dict.GetGender(result.gender) << ",";
+    ofstr << dict.GetNature(result.nature) << ",";
+    ofstr << std::dec << result.height << ",";
+    ofstr << std::dec << result.weight << ",";
+    ofstr << std::dec << result.scale << ",";
+    ofstr << std::endl;
+  }
+  ofstr.close();
 }
 
 int GetStarCount(uint Difficulty, int Progress, bool IsBlack)
@@ -291,8 +268,9 @@ void TeranFinder::generate_info(uint32_t seed,
     {
       Xoroshiro128Plus rng(seed);
       // 游戏分了5个阶段，暂时只输出最后一个阶段的
+      static int stage = 4;
       uint32_t star_count =
-          is_black ? 6 : GetStarCount(rng.NextInt(100), 4, is_black);
+          is_black ? 6 : GetStarCount(rng.NextInt(100), stage, is_black);
 
       Result result;
       result.seed = seed;
@@ -301,6 +279,7 @@ void TeranFinder::generate_info(uint32_t seed,
       bool is_scarlet = j;
 
       result.is_scarlet = is_scarlet;
+      result.stage = stage;
 
       const auto& species_of_star = is_scarlet ? scarlet_species_[star_count]
                                                : violet_species_[star_count];

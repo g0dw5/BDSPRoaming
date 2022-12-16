@@ -9,9 +9,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "PersonalTable9SV.h"
 #include "Xoroshiro128Plus.h"
 #include "definitions.h"
-#include "PersonalTable9SV.h"
 
 class TeranFinder
 {
@@ -27,6 +27,7 @@ class TeranFinder
     uint32_t seed{};
     uint32_t star_count{};
     bool is_scarlet{};
+    uint8_t stage{};
     // EncounterTera9编号
     uint16_t encounter_index{};
     uint32_t teran_type;
@@ -42,7 +43,7 @@ class TeranFinder
     uint8_t weight;
     uint8_t scale;
   };
-  // 输出内容:朱/紫,seed,encounter_index(外键),ec,pid,shiny,iv_type(只四种),ability,gender,nature,height,weight,scale
+  // 输出内容:version,stage,seed,encounter_index(外键),ec,pid,shiny,iv_type(只四种),ability,gender,nature,height,weight,scale
   std::vector<Result> result_array_;
 
   // 第一层是几星(0预留空位),第二层是该等级下宝可梦数量,数值为EncounterTera9Table的下标
@@ -51,7 +52,8 @@ class TeranFinder
 
  private:
   void generate_info(uint32_t seed, std::vector<Result>& result_array);
-  void generate_pkm_info(uint32_t seed, const EncounterTera9 &encounter, Result &result);
+  void generate_pkm_info(uint32_t seed, const EncounterTera9& encounter,
+                         Result& result);
 };
 
 #endif  // ROAMINGID_SRC_TERAN_FINDER_H_
