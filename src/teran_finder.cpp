@@ -162,7 +162,7 @@ void TeranFinder::FindAllResult()
     ofstr << dict.GetNature(result.nature) << ",";
     ofstr << std::dec << (int)result.height << ",";
     ofstr << std::dec << (int)result.weight << ",";
-    ofstr << std::dec << (int)result.scale << ",";
+    ofstr << std::dec << (int)result.scale;
     ofstr << std::endl;
   }
   ofstr.close();
